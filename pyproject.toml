@@ -6,6 +6,9 @@ authors = ["zani-t <tembo4.t@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+typer = {extras = ["all"], version = "^0.6.1"}
+Flask = "^2.2.2"
+Flask-MySQL = "^1.5.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
