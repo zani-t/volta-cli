@@ -8,6 +8,10 @@ app = Flask(__name__)
 api = Api(app)
 
 def start():
-    # mysql_server.ping()
+    """ start -> Run Flask server with updated endpoints """
+    # update()
+    app.run()
+
+    return SUCCESS
 
 # def update

@@ -28,8 +28,8 @@ def login_status() -> int | Login:
         username=config_parser["Config"]["username"],
         password=config_parser["Config"]["password"],
     )
-    ping_status = mysql_server.ping(login)
-    if ping_status:
+    ping_error = mysql_server.ping(login)
+    if ping_error:
         return MYSQL_CONN_ERROR
     
     return login

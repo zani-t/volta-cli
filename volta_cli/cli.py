@@ -78,9 +78,27 @@ def logout():
 
 """ FLASK SERVER COMMANDS """
 
-# start -> initialize flask server, connect to mysql database
 @app.command()
 def start() -> None:
+    """ start -> Check login status, update & run server """
+    # Check status [Repetitive]
+    login_status = config.login_status()
+
+    # Nonexistent/invalid
+    if (type(login_status)  == int):
+        typer.secho(
+            f'MySQL connection failed with error "{ERRORS[login_status]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(
+        f'Running on MySQL connection host={login_status.hostname}, user={login_status.username}',
+        fg=typer.colors.GREEN,
+    )
+
+    # Update & run
     start_error = flask_server.start()
     if start_error:
         typer.secho(
