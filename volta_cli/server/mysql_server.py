@@ -7,33 +7,21 @@ from mysql.connector import (
     MySQLConnection,
 )
 
-from volta_cli import SUCCESS, MYSQL_LOGIN_ERROR
-
-g_hostname: str = 'localhost'
-g_username: str = 'root'
-g_password: str = None
+from volta_cli import Login, SUCCESS, MYSQL_CONN_ERROR
 
 connection: MySQLConnection | CMySQLConnection = None
 
-def set_credentials(
-    hostname: str,
-    username: str,
-    password: str,
-) -> int:
+def ping(login: Login) -> int:
     try:
         with connect(
-            host = hostname,
-            user = username,
-            password = password,
+            host = login.hostname,
+            user = login.username,
+            password = login.password,
         ) as conn:
-
-            global g_hostname, g_username, g_password, connection
-            g_hostname = hostname
-            g_username = username
-            g_password = password
-            #connection = conn
-
-            return SUCCESS
-
-    except Error:
-        return MYSQL_LOGIN_ERROR
+            global connection
+            connection = conn
+    except Error as e:
+        print(e)
+        return MYSQL_CONN_ERROR
+    
+    return SUCCESS
