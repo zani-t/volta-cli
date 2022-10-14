@@ -2,10 +2,15 @@ from typing import NamedTuple
 
 # Package variables
 
-class Login(NamedTuple):
+class Login():
     hostname: str = "localhost"
     username: str = "root"
     password: str = None
+
+    def __init__(self, hostname: str, username: str, password: str):
+        self.hostname = hostname
+        self.username = username
+        self.password = password
 
 __app_name__ = 'volta-cli'
 __version__ = '0.1.0'

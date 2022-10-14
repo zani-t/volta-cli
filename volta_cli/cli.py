@@ -1,10 +1,7 @@
-# Interface commands
-
-from distutils.log import log
 import typer
 from typing import Optional
 
-from volta_cli import Login, config, ERRORS, __app_name__, __version__
+from volta_cli import Login, test, config, ERRORS, __app_name__, __version__
 from volta_cli.server import flask_server, mysql_server
 
 app = typer.Typer()
@@ -12,7 +9,7 @@ app = typer.Typer()
 """ CREDENTIALS/CONFIGURATION COMMANDS """
 
 @app.command()
-def status() -> None:
+def abc() -> None:
     """ Status -> Check for user in config file """
     login_status = config.login_status()
 
@@ -26,7 +23,7 @@ def status() -> None:
 
     # Valid
     typer.secho(
-        f'Logged in with connection host={login_status.hostname}, user={login_status.username}',
+        f'Logged in to MySQL with connection host={login_status.hostname}, user={login_status.username}',
         fg=typer.colors.GREEN,
     )
 
@@ -62,6 +59,11 @@ def login(
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+    
+    typer.secho(
+        f'Logged in to MySQL with connection host={login.hostname}, user={login.username}',
+        fg=typer.colors.GREEN,
+    )
 
     return
 
@@ -75,6 +77,11 @@ def logout():
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+    
+    typer.secho(
+        f'Logged out',
+        fg=typer.colors.GREEN,
+    )
 
 """ FLASK SERVER COMMANDS """
 
@@ -94,7 +101,7 @@ def start() -> None:
 
     # Valid
     typer.secho(
-        f'Running on MySQL connection host={login_status.hostname}, user={login_status.username}',
+        f'Running on MySQL with connection host={login_status.hostname}, user={login_status.username}',
         fg=typer.colors.GREEN,
     )
 
@@ -111,6 +118,75 @@ def start() -> None:
 
 # update -> create/update endpoints on flask server via http request
 
+
+""" MYSQL COMMANDS """
+
+""" DATABASE LEVEL """
+
+# create database
+# ... [check for existing db, create volta db with projects and models]
+
+""" PROJECT LEVEL """
+
+# create project
+# ...
+
+# delete project
+# ...
+
+# list projects
+# ...
+
+# enter project
+# ...
+
+# exit project
+# ...
+
+""" GROUP LEVEL """
+
+# create group
+# ...
+
+# delete group
+# ...
+
+# list groups
+# ...
+
+# [enter group]
+# ...
+
+# [exit group]
+# ...
+
+""" DATASET LEVEL """
+
+# create dataset
+# ...
+
+# delete dataset
+# ...
+
+""" MODEL LEVEL """
+
+# create model
+# ...
+
+# delete model
+# ...
+
+# list models
+# ...
+
+# train model
+# ...
+
+# deploy model
+# ...
+
+# pull model
+# ...
 
 def _version_callback(value: bool) -> None:
     if value:
