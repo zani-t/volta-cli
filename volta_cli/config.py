@@ -41,7 +41,7 @@ def init_user(login: Login) -> int:
     if ping_error:
         return ping_error
     
-    # Check if user exists already
+    # Create config file and check if user exists already
     init_config_error = _init_config_file()
     if init_config_error:
         return init_config_error

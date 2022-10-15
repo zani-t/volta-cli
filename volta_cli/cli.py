@@ -1,20 +1,20 @@
 import typer
 from typing import Optional
 
-from volta_cli import Login, test, config, ERRORS, __app_name__, __version__
+from volta_cli import Login, config, ERRORS, __app_name__, __version__
 from volta_cli.server import flask_server, mysql_server
 
 app = typer.Typer()
 
-""" CREDENTIALS/CONFIGURATION COMMANDS """
+""" CONFIGURATION COMMANDS """
 
 @app.command()
-def abc() -> None:
+def status() -> None:
     """ Status -> Check for user in config file """
     login_status = config.login_status()
 
     # Nonexistent/invalid
-    if (type(login_status)  == int):
+    if (type(login_status) == int):
         typer.secho(
             f'Logged out with current status "{ERRORS[login_status]}"',
             fg=typer.colors.RED,
@@ -92,7 +92,7 @@ def start() -> None:
     login_status = config.login_status()
 
     # Nonexistent/invalid
-    if (type(login_status)  == int):
+    if (type(login_status) == int):
         typer.secho(
             f'MySQL connection failed with error "{ERRORS[login_status]}"',
             fg=typer.colors.RED,
@@ -117,14 +117,34 @@ def start() -> None:
     return
 
 # update -> create/update endpoints on flask server via http request
-
+# ...
 
 """ MYSQL COMMANDS """
 
 """ DATABASE LEVEL """
 
-# create database
-# ... [check for existing db, create volta db with projects and models]
+@app.command()
+def init() -> None:
+    """ Initialize Volta CLI top-level database """
+    # Check login status
+    login_status = config.login_status()
+    if (type(login_status) == int):
+        typer.secho(
+            f'Logged out with current status "{ERRORS[login_status]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Create database
+    init_error = mysql_server.init(login_status)
+    if (type(init_error) == int):
+        typer.secho(
+            f'Database initialization failed with status "{ERRORS[init_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    return
 
 """ PROJECT LEVEL """
 
@@ -187,6 +207,8 @@ def start() -> None:
 
 # pull model
 # ...
+
+""" CLI LEVEL """
 
 def _version_callback(value: bool) -> None:
     if value:

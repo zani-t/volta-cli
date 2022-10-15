@@ -1,5 +1,3 @@
-from typing import NamedTuple
-
 # Package variables
 
 class Login():
@@ -21,11 +19,15 @@ __version__ = '0.1.0'
     FILE_ERROR,
     CONFIG_WRITE_ERROR,
     MYSQL_CONN_ERROR,
-) = range(5)
+    MYSQL_QUERY_ERROR,
+    MYSQL_DATABASE_EXISTS,
+) = range(7)
 
 ERRORS = {
     DIR_ERROR : "[Config directory error]",
     FILE_ERROR : "[Config file error]",
     CONFIG_WRITE_ERROR : "[Config write error]",
     MYSQL_CONN_ERROR : "[MySQL connection error]",
+    MYSQL_QUERY_ERROR : "[MySQL query error]",
+    MYSQL_DATABASE_EXISTS : "[MySQL database 'volta' exists]"
 }
