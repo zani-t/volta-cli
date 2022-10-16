@@ -1,33 +1,37 @@
 # Package variables
 
-class Login():
-    hostname: str = "localhost"
-    username: str = "root"
-    password: str = None
+from typing import NamedTuple
 
-    def __init__(self, hostname: str, username: str, password: str):
-        self.hostname = hostname
-        self.username = username
-        self.password = password
+class Login():
+    args = {
+        "host" : "localhost",
+        "user" : "root",
+    }
+    def __init__(self, **kwargs):
+        self.args.update(kwargs)
+
+class LoginResponse(NamedTuple):
+    login: Login
+    response: int
 
 __app_name__ = 'volta-cli'
 __version__ = '0.1.0'
 
 (
     SUCCESS,
-    DIR_ERROR,
-    FILE_ERROR,
-    CONFIG_WRITE_ERROR,
-    MYSQL_CONN_ERROR,
-    MYSQL_QUERY_ERROR,
-    MYSQL_DATABASE_EXISTS,
+    ERR_CONFIG_WRITE,
+    ERR_CONFIG_DIR,
+    ERR_CONFIG_FILE,
+    ERR_MYSQL_CONN,
+    ERR_MYSQL_DB,
+    STATUS_MYSQL_DB_EX
 ) = range(7)
 
 ERRORS = {
-    DIR_ERROR : "[Config directory error]",
-    FILE_ERROR : "[Config file error]",
-    CONFIG_WRITE_ERROR : "[Config write error]",
-    MYSQL_CONN_ERROR : "[MySQL connection error]",
-    MYSQL_QUERY_ERROR : "[MySQL query error]",
-    MYSQL_DATABASE_EXISTS : "[MySQL database 'volta' exists]"
+    ERR_CONFIG_WRITE : "[Config write error]",
+    ERR_CONFIG_DIR : "[Config directory error]",
+    ERR_CONFIG_FILE : "[Config file error]",
+    ERR_MYSQL_CONN : "[MySQL connection error]",
+    ERR_MYSQL_DB : "[MySQL database error]",
+    STATUS_MYSQL_DB_EX : "[MySQL database 'volta' exists]",
 }

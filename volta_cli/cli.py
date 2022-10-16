@@ -11,19 +11,24 @@ app = typer.Typer()
 @app.command()
 def status() -> None:
     """ Status -> Check for user in config file """
-    login_status = config.login_status()
+    # Get login response
+    login, login_error = config.read_config()
 
     # Nonexistent/invalid
-    if (type(login_status) == int):
+    if login_error:
         typer.secho(
-            f'Logged out with current status "{ERRORS[login_status]}"',
+            f'Logged out with current status "{ERRORS[login_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+    
+    ext = ""
+    if "database" in login.args:
+        ext = f', project={login.args["project"]}, group={login.args["group"]}'
 
     # Valid
     typer.secho(
-        f'Logged in to MySQL with connection host={login_status.hostname}, user={login_status.username}',
+        f'Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}' + ext,
         fg=typer.colors.GREEN,
     )
 
@@ -32,13 +37,13 @@ def status() -> None:
 @app.command()
 def login(
     hostname: str = typer.Option(
-        str(Login.hostname),
+        str(Login.args["host"]),
         "--hostname",
         "-h",
         prompt="MySQL hostname",
     ),
     username: str = typer.Option(
-        str(Login.username),
+        str(Login.args["user"]),
         "--username",
         "-u",
         prompt="MySQL username",
@@ -51,8 +56,12 @@ def login(
 ) -> None:
     """ Login -> Create config file with credentials """
     # !!! set default parameters
-    login = Login(hostname, username, password)
-    init_user_error = config.init_user(login)
+    login = Login(
+        host=hostname,
+        user=username,
+        password=password,
+    )
+    init_user_error = config.write_config(login)
     if init_user_error:
         typer.secho(
             f'MySQL login failed with error "{ERRORS[init_user_error]}"',
@@ -61,7 +70,7 @@ def login(
         raise typer.Exit(1)
     
     typer.secho(
-        f'Logged in to MySQL with connection host={login.hostname}, user={login.username}',
+        f'Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}',
         fg=typer.colors.GREEN,
     )
 
@@ -88,20 +97,20 @@ def logout():
 @app.command()
 def start() -> None:
     """ start -> Check login status, update & run server """
-    # Check status [Repetitive]
-    login_status = config.login_status()
+    # Check status
+    login, login_error = config.read_config()
 
     # Nonexistent/invalid
-    if (type(login_status) == int):
+    if login_error:
         typer.secho(
-            f'MySQL connection failed with error "{ERRORS[login_status]}"',
+            f'MySQL connection failed with error "{ERRORS[login_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
 
     # Valid
     typer.secho(
-        f'Running on MySQL with connection host={login_status.hostname}, user={login_status.username}',
+        f'Running on MySQL with connection host={login.args["host"]}, user={login.args["user"]}',
         fg=typer.colors.GREEN,
     )
 
@@ -127,22 +136,33 @@ def start() -> None:
 def init() -> None:
     """ Initialize Volta CLI top-level database """
     # Check login status
-    login_status = config.login_status()
-    if (type(login_status) == int):
+    login, login_error = config.read_config()
+    if login_error:
         typer.secho(
-            f'Logged out with current status "{ERRORS[login_status]}"',
+            f'Logged out with current status "{ERRORS[login_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
 
     # Create database
-    init_error = mysql_server.init(login_status)
+    init_error = mysql_server.init(login)
     if (type(init_error) == int):
         typer.secho(
             f'Database initialization failed with status "{ERRORS[init_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+
+    return
+
+@app.command()
+def drop(
+    # Confirmation prompt
+) -> None:
+    """ Delete database 'volta' """
+    # Check login status
+
+    # Delete
 
     return
 

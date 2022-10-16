@@ -5,8 +5,8 @@ import configparser
 from pathlib import Path
 
 from volta_cli import (
-    Login,
-    CONFIG_WRITE_ERROR, DIR_ERROR, FILE_ERROR, MYSQL_CONN_ERROR, SUCCESS,
+    Login, LoginResponse,
+    ERR_CONFIG_FILE, ERR_CONFIG_WRITE, ERR_CONFIG_DIR, ERR_MYSQL_CONN, SUCCESS,
     __app_name__,
 )
 from volta_cli.server import mysql_server
@@ -14,27 +14,35 @@ from volta_cli.server import mysql_server
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini"
 
-def login_status() -> int | Login:
+def read_config() -> LoginResponse:
     """ Check for existing config file with users (+ valid connection to MYSQL) """
     # Check if config file exists
     if not CONFIG_FILE_PATH.exists():
-        return FILE_ERROR
+        return LoginResponse(None, ERR_CONFIG_FILE)
     
-    # Read config login and ping
+    # Read config login details
     config_parser = configparser.ConfigParser()
     config_parser.read(CONFIG_FILE_PATH)
     login = Login(
-        hostname=config_parser["Config"]["hostname"],
-        username=config_parser["Config"]["username"],
-        password=config_parser["Config"]["password"],
+        hostname=config_parser["Login"]["host"],
+        username=config_parser["Login"]["user"],
+        password=config_parser["Login"]["password"]
     )
+    if config_parser.has_option("Login", "database"):
+        login.args.update({
+            "database" : "volta",
+            "project" : config_parser["Login"]["project"],
+            "group" : config_parser["Login"]["group"],
+        })
+
+    # Test connection
     ping_error = mysql_server.ping(login)
     if ping_error:
-        return MYSQL_CONN_ERROR
+        return LoginResponse(login, ERR_MYSQL_CONN)
     
-    return login
+    return LoginResponse(login, SUCCESS)
 
-def init_user(login: Login) -> int:
+def write_config(login: Login) -> int:
     """ init_user -> Set login details in config file """
     # Check if MySQL login is valid
     ping_error = mysql_server.ping(login)
@@ -48,16 +56,12 @@ def init_user(login: Login) -> int:
 
     # Write to config file
     config_parser = configparser.ConfigParser()
-    config_parser["Config"] = {
-        "hostname" : login.hostname,
-        "username" : login.username,
-        "password" : login.password,
-    }
+    config_parser["Login"] = login.args
     try:
         with CONFIG_FILE_PATH.open("w") as file:
             config_parser.write(file)
     except OSError:
-        return CONFIG_WRITE_ERROR
+        return ERR_CONFIG_WRITE
 
     return SUCCESS
 
@@ -67,23 +71,22 @@ def _init_config_file() -> int:
     try:
         CONFIG_DIR_PATH.mkdir(exist_ok=True)
     except OSError:
-        return DIR_ERROR
+        return ERR_CONFIG_DIR
     
     # Create file if nonexistent
     try:
         if not CONFIG_FILE_PATH.exists():
             CONFIG_FILE_PATH.touch()
     except OSError:
-        return FILE_ERROR
+        return ERR_CONFIG_FILE
 
     return SUCCESS
 
 def destroy_user() -> int:
     """ destroy_user -> Destroy config file if exists """
-
     # Ensure config file exists
     if not CONFIG_FILE_PATH.exists():
-        return FILE_ERROR
+        return ERR_CONFIG_FILE
     
     # Remove
     CONFIG_FILE_PATH.unlink()
