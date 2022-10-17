@@ -5,8 +5,8 @@ from telnetlib import STATUS
 from mysql.connector import connect, Error
 
 from volta_cli import (
-    Login, LoginResponse,
-    ERR_MYSQL_CONN, ERR_MYSQL_DB, STATUS_MYSQL_DB_EX, SUCCESS,
+    Login,
+    ERR_MYSQL_CONN, ERR_MYSQL_DB, ERR_MYSQL_QUERY, STATUS_MYSQL_DB_EX, STATUS_MYSQL_DB_NO_EX, SUCCESS,
     __app_name__,
 )
 
@@ -41,17 +41,111 @@ def init(login: Login) -> int:
     
     # Create database volta
     try:
+        """ Model structure """
+        create_db_query = "CREATE DATABASE volta"
+        create_projects_query = """
+        CREATE TABLE projects(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100),
+            dsc VARCHAR(255)
+        )
+        """
+        create_modelsets_query = """
+        CREATE TABLE modelsets(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            project_id INT,
+            name VARCHAR(100),
+            dsc VARCHAR(255),
+            FOREIGN KEY(project_id) REFERENCES projects(id)
+        )
+        """
+        create_datasets_query = """
+        CREATE TABLE datasets(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            project_id INT,
+            modelset_id INT,
+            name VARCHAR(100),
+            dsc VARCHAR(255),
+            location VARCHAR(50),
+            address VARCHAR(255),
+            FOREIGN KEY(project_id) REFERENCES projects(id),
+            FOREIGN KEY(modelset_id) REFERENCES modelsets(id)
+        )
+        """
+        create_models_query = """
+        CREATE TABLE models(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            project_id INT,
+            modelset_id INT,
+            dataset_id INT,
+            name VARCHAR(100),
+            dsc VARCHAR(255),
+            arch VARCHAR(100),
+            hyperparams VARCHAR(255),
+            eval_metrics VARCHAR(255),
+            FOREIGN KEY(project_id) REFERENCES projects(id),
+            FOREIGN KEY(modelset_id) REFERENCES modelsets(id),
+            FOREIGN KEY(dataset_id) REFERENCES datasets(id)
+        )
+        """
+
+        """ Initial entries """
+        create_init_proj_query = """
+        INSERT INTO projects (name, dsc)
+        VALUES ("Unsorted", "Unsorted modelsets")
+        """
+        create_init_modelset_query = """
+        INSERT INTO modelsets (project_id, name, dsc)
+        VALUES (1, "Unsorted", "Unsorted models")
+        """
+
         with connect(
             host = login.args["host"],
             user = login.args["user"],
             password = login.args["password"],
         ) as conn:
-            create_db_query = "CREATE DATABASE volta"
             with conn.cursor() as cursor:
                 cursor.execute(create_db_query)
+                conn.commit()
+                conn.database = "volta"
+                for query in (
+                    create_projects_query,
+                    create_modelsets_query,
+                    create_datasets_query,
+                    create_models_query,
+                    create_init_proj_query,
+                    create_init_modelset_query,
+                ):
+                    cursor.execute(query)
+                    print(query)
+                    conn.commit()
     except Error as e:
         print(e)
-        return ERR_MYSQL_CONN
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
+
+def destroy(login: Login) -> int:
+    """ Destroy database 'volta' """
+    # Check if database exists (name volta)
+    check_for_db_status = _check_for_db(login)
+    if not check_for_db_status:
+        return STATUS_MYSQL_DB_NO_EX
+    
+    # Create database volta
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+        ) as conn:
+            create_db_query = "DROP DATABASE volta"
+            with conn.cursor() as cursor:
+                cursor.execute(create_db_query)
+                conn.commit()
+    except Error as e:
+        print(e)
+        return ERR_MYSQL_QUERY
 
     return SUCCESS
 

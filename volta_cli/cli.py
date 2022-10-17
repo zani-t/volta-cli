@@ -146,7 +146,7 @@ def init() -> None:
 
     # Create database
     init_error = mysql_server.init(login)
-    if (type(init_error) == int):
+    if init_error:
         typer.secho(
             f'Database initialization failed with status "{ERRORS[init_error]}"',
             fg=typer.colors.RED,
@@ -158,11 +158,33 @@ def init() -> None:
 @app.command()
 def drop(
     # Confirmation prompt
+    confirm: str = typer.Option(
+        ...,
+        prompt="Confirm you want to delete database 'volta' (forever!). Enter 'y'",
+    )
 ) -> None:
     """ Delete database 'volta' """
-    # Check login status
+    if confirm != 'y':
+        typer.secho('Operation cancelled.', fg=typer.colors.RED)
+        raise typer.Exit(1)
 
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'Logged out with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
     # Delete
+    drop_error = mysql_server.destroy(login)
+    if drop_error:
+        typer.secho(
+            f'Database destruction failed with status "{ERRORS[drop_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
     return
 

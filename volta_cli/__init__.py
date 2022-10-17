@@ -24,8 +24,10 @@ __version__ = '0.1.0'
     ERR_CONFIG_FILE,
     ERR_MYSQL_CONN,
     ERR_MYSQL_DB,
-    STATUS_MYSQL_DB_EX
-) = range(7)
+    ERR_MYSQL_QUERY,
+    STATUS_MYSQL_DB_EX,
+    STATUS_MYSQL_DB_NO_EX
+) = range(9)
 
 ERRORS = {
     ERR_CONFIG_WRITE : "[Config write error]",
@@ -33,5 +35,7 @@ ERRORS = {
     ERR_CONFIG_FILE : "[Config file error]",
     ERR_MYSQL_CONN : "[MySQL connection error]",
     ERR_MYSQL_DB : "[MySQL database error]",
+    ERR_MYSQL_QUERY : "[MySQL query error]",
     STATUS_MYSQL_DB_EX : "[MySQL database 'volta' exists]",
+    STATUS_MYSQL_DB_NO_EX : "[MySQL database 'volta' doesn't exist]",
 }
