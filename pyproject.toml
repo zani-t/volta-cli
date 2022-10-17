@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "volta-cli"
+name = "vcx"
 version = "0.1.0"
 description = ""
 authors = ["zani-t <tembo4.t@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-volta-cli = "volta_cli.__main__:main"
+vcx = "volta_cli.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
