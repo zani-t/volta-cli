@@ -12,23 +12,23 @@ app = typer.Typer()
 def status() -> None:
     """ Status -> Check for user in config file """
     # Get login response
-    login, login_error = config.read_config()
+    login, read_config_error = config.read_config()
 
     # Nonexistent/invalid
-    if login_error:
+    if read_config_error:
         typer.secho(
-            f'Logged out with current status "{ERRORS[login_error]}"',
+            f'[Volta] Logged out with current status "{ERRORS[read_config_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     
     ext = ""
     if "database" in login.args:
-        ext = f', project={login.args["project"]}, group={login.args["group"]}'
+        ext = f', project={login.args["project"]}, modelset={login.args["modelset"]}'
 
     # Valid
     typer.secho(
-        f'Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}' + ext,
+        f'[Volta] Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}' + ext,
         fg=typer.colors.GREEN,
     )
 
@@ -61,17 +61,17 @@ def login(
         user=username,
         password=password,
     )
-    init_user_error = config.write_config(login)
-    if init_user_error:
+    write_config_error = config.write_config(login)
+    if write_config_error:
         typer.secho(
-            f'MySQL login failed with error "{ERRORS[init_user_error]}"',
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     
     # Success
     typer.secho(
-        f'Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}',
+        f'[Volta] Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}',
         fg=typer.colors.GREEN,
     )
 
@@ -84,13 +84,13 @@ def logout():
     destroy_user_error = config.destroy_user()
     if destroy_user_error:
         typer.secho(
-            f'MySQL logout failed with error "{ERRORS[destroy_user_error]}"',
+            f'[Volta] MySQL logout failed with error "{ERRORS[destroy_user_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     
     typer.secho(
-        f'Logged out',
+        f'[Volta] Logged out',
         fg=typer.colors.GREEN,
     )
 
@@ -105,14 +105,14 @@ def start() -> None:
     # Nonexistent/invalid
     if login_error:
         typer.secho(
-            f'MySQL connection failed with error "{ERRORS[login_error]}"',
+            f'[Volta] MySQL connection failed with error "{ERRORS[login_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
 
     # Valid
     typer.secho(
-        f'Starting with MySQL connection host={login.args["host"]}, user={login.args["user"]}',
+        f'[Volta] Starting with MySQL connection host={login.args["host"]}, user={login.args["user"]}',
         fg=typer.colors.GREEN,
     )
 
@@ -120,7 +120,7 @@ def start() -> None:
     start_error = flask_server.start()
     if start_error:
         typer.secho(
-            f'Flask startup failed with error "{ERRORS[start_error]}"',
+            f'[Volta] Flask startup failed with error "{ERRORS[start_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -141,7 +141,7 @@ def init() -> None:
     login, login_error = config.read_config()
     if login_error:
         typer.secho(
-            f'Logged out with current status "{ERRORS[login_error]}"',
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -150,16 +150,27 @@ def init() -> None:
     init_error = mysql_server.init(login)
     if init_error:
         typer.secho(
-            f'Database initialization failed with status "{ERRORS[init_error]}"',
+            f'[Volta] Database initialization failed with status "{ERRORS[init_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Rewrite config
+    login.args.update({
+        "database" : "volta",
+        "project" : "Unsorted",
+        "modelset" : "Unsorted",
+    })
+    write_config_error = config.write_config(login)
+    if write_config_error:
+        typer.secho(
+            f'[Volta] Config rewrite failed with error "{ERRORS[write_config_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     
     typer.secho(
-        f"""
-        Successfully initialized database 'volta', tables 'projects', 'modelsets', 'datasets',\n
-        'models', and 'endpoints', project 'unsorted', and group 'unsorted'
-        """,
+        f"[Volta] Successfully initialized database 'volta', tables 'projects', 'modelsets', 'datasets', 'models', and 'endpoints', project 'unsorted', and group 'unsorted'",
         fg=typer.colors.GREEN,
     )
 
@@ -176,14 +187,14 @@ def destroy(
     """ Delete database 'volta' """
     # Cancel if not confirmed
     if confirm != 'y':
-        typer.secho('Operation cancelled.', fg=typer.colors.RED)
+        typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
         raise typer.Exit(1)
 
     # Check login status
     login, login_error = config.read_config()
     if login_error:
         typer.secho(
-            f'Logged out with current status "{ERRORS[login_error]}"',
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -192,13 +203,25 @@ def destroy(
     drop_error = mysql_server.destroy(login)
     if drop_error:
         typer.secho(
-            f'Database destruction failed with status "{ERRORS[drop_error]}"',
+            f'[Volta] Database destruction failed with status "{ERRORS[drop_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Rewrite config
+    login.args.pop("database")
+    login.args.pop("project")
+    login.args.pop("modelset")
+    write_config_error = config.write_config(login)
+    if write_config_error:
+        typer.secho(
+            f'[Volta] Config rewrite failed with error "{ERRORS[write_config_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     
     # Success
-    typer.secho(f"Destroyed database 'volta'.", fg=typer.colors.GREEN)
+    typer.secho(f"[Volta] Destroyed database 'volta'", fg=typer.colors.BRIGHT_YELLOW)
 
     return
 

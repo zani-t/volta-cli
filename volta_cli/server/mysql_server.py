@@ -1,7 +1,5 @@
 # SQL server functions and global variables
 
-from curses import ERR
-from telnetlib import STATUS
 from mysql.connector import connect, Error
 
 from volta_cli import (
@@ -12,23 +10,16 @@ from volta_cli import (
 
 def ping(login: Login) -> int:
     """ Test connection to MySQL """
-    # Assert valid MySQL connection and make sure database is set to 'volta'
-    try:
-        with connect(
-            host = login.args["host"],
-            user = login.args["user"],
-            password = login.args["password"],
-        ) as conn:
-            if "database" in login.args:
-                try:
-                    conn.database = "volta"
-                except Error as e:
-                    print(e)
-                    return ERR_MYSQL_DB
-    except Error as e:
-        print(e)
+    check_for_db_status = _check_for_db(login)
+    # Connection error
+    if check_for_db_status == ERR_MYSQL_CONN:
         return ERR_MYSQL_CONN
+
+    # Valid connection, database 'volta' does not exist
+    if not check_for_db_status:
+        return STATUS_MYSQL_DB_NO_EX
     
+    # Valid connection
     return SUCCESS
 
 """ DATABASE LEVEL FUNCTIONS """
@@ -134,7 +125,6 @@ def init(login: Login) -> int:
                     create_init_modelset_query,
                 ):
                     cursor.execute(query)
-                    print(query)
                     conn.commit()
     except Error as e:
         print(e)

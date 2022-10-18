@@ -32,12 +32,12 @@ def read_config() -> LoginResponse:
         login.args.update({
             "database" : "volta",
             "project" : config_parser["Login"]["project"],
-            "group" : config_parser["Login"]["group"],
+            "modelset" : config_parser["Login"]["modelset"],
         })
 
     # Test connection
-    ping_error = mysql_server.ping(login)
-    if ping_error:
+    ping_status = mysql_server.ping(login)
+    if ping_status == ERR_MYSQL_CONN:
         return LoginResponse(login, ERR_MYSQL_CONN)
     
     return LoginResponse(login, SUCCESS)
@@ -45,9 +45,16 @@ def read_config() -> LoginResponse:
 def write_config(login: Login) -> int:
     """ init_user -> Set login details in config file """
     # Check if MySQL login is valid
-    ping_error = mysql_server.ping(login)
-    if ping_error:
-        return ping_error
+    ping_status = mysql_server.ping(login)
+    if ping_status == ERR_MYSQL_CONN:
+        return ERR_MYSQL_CONN
+
+    if not ping_status:
+        login.args.update({
+            "database" : "volta",
+            "project" : "Unsorted",
+            "modelset" : "Unsorted",
+        })
     
     # Create config file and check if user exists already
     init_config_error = _init_config_file()
@@ -56,6 +63,7 @@ def write_config(login: Login) -> int:
 
     # Write to config file
     config_parser = configparser.ConfigParser()
+    
     config_parser["Login"] = login.args
     try:
         with CONFIG_FILE_PATH.open("w") as file:
