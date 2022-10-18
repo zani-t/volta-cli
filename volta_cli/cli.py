@@ -55,7 +55,7 @@ def login(
     ),
 ) -> None:
     """ Login -> Create config file with credentials """
-    # !!! set default parameters
+    # Initialize login object and write to config
     login = Login(
         host=hostname,
         user=username,
@@ -69,6 +69,7 @@ def login(
         )
         raise typer.Exit(1)
     
+    # Success
     typer.secho(
         f'Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}',
         fg=typer.colors.GREEN,
@@ -79,6 +80,7 @@ def login(
 @app.command()
 def logout():
     """ Logout -> Destroy config file """
+    # Check for error
     destroy_user_error = config.destroy_user()
     if destroy_user_error:
         typer.secho(
@@ -110,7 +112,7 @@ def start() -> None:
 
     # Valid
     typer.secho(
-        f'Running on MySQL with connection host={login.args["host"]}, user={login.args["user"]}',
+        f'Starting with MySQL connection host={login.args["host"]}, user={login.args["user"]}',
         fg=typer.colors.GREEN,
     )
 
@@ -152,11 +154,19 @@ def init() -> None:
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+    
+    typer.secho(
+        f"""
+        Successfully initialized database 'volta', tables 'projects', 'modelsets', 'datasets',\n
+        'models', and 'endpoints', project 'unsorted', and group 'unsorted'
+        """,
+        fg=typer.colors.GREEN,
+    )
 
     return
 
 @app.command()
-def drop(
+def destroy(
     # Confirmation prompt
     confirm: str = typer.Option(
         ...,
@@ -164,6 +174,7 @@ def drop(
     )
 ) -> None:
     """ Delete database 'volta' """
+    # Cancel if not confirmed
     if confirm != 'y':
         typer.secho('Operation cancelled.', fg=typer.colors.RED)
         raise typer.Exit(1)
@@ -185,6 +196,9 @@ def drop(
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+    
+    # Success
+    typer.secho(f"Destroyed database 'volta'.", fg=typer.colors.GREEN)
 
     return
 
@@ -200,26 +214,26 @@ def drop(
 # ...
 
 # enter project
-# ...
+
 
 # exit project
 # ...
 
-""" GROUP LEVEL """
+""" MODELSET LEVEL """
 
-# create group
+# create modelset
 # ...
 
-# delete group
+# delete modelset
 # ...
 
-# list groups
+# list modelset
 # ...
 
-# [enter group]
+# enter modelset
 # ...
 
-# [exit group]
+# exit modelset
 # ...
 
 """ DATASET LEVEL """

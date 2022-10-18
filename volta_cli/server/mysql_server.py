@@ -11,7 +11,8 @@ from volta_cli import (
 )
 
 def ping(login: Login) -> int:
-    """ Test connection to MySQL and set object connection """
+    """ Test connection to MySQL """
+    # Assert valid MySQL connection and make sure database is set to 'volta'
     try:
         with connect(
             host = login.args["host"],
@@ -20,7 +21,7 @@ def ping(login: Login) -> int:
         ) as conn:
             if "database" in login.args:
                 try:
-                    conn.database = "test"
+                    conn.database = "volta"
                 except Error as e:
                     print(e)
                     return ERR_MYSQL_DB
@@ -39,8 +40,8 @@ def init(login: Login) -> int:
     if check_for_db_status:
         return STATUS_MYSQL_DB_EX
     
-    # Create database volta
     try:
+        # Define database structure
         """ Model structure """
         create_db_query = "CREATE DATABASE volta"
         create_projects_query = """
@@ -66,7 +67,7 @@ def init(login: Login) -> int:
             modelset_id INT,
             name VARCHAR(100),
             dsc VARCHAR(255),
-            location VARCHAR(50),
+            location TINYINT(1),
             address VARCHAR(255),
             FOREIGN KEY(project_id) REFERENCES projects(id),
             FOREIGN KEY(modelset_id) REFERENCES modelsets(id)
@@ -88,6 +89,20 @@ def init(login: Login) -> int:
             FOREIGN KEY(dataset_id) REFERENCES datasets(id)
         )
         """
+        create_endpoints_query = """
+        CREATE TABLE endpoints(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            model_id INT,
+            alias VARCHAR(100),
+            location TINYINT(1),
+            address VARCHAR(100),
+            datatype VARCHAR(50),
+            v_framework VARCHAR(50),
+            total_runs INT,
+            avg_runtime FLOAT,
+            FOREIGN KEY(model_id) REFERENCES models(id)
+        )
+        """
 
         """ Initial entries """
         create_init_proj_query = """
@@ -99,6 +114,7 @@ def init(login: Login) -> int:
         VALUES (1, "Unsorted", "Unsorted models")
         """
 
+        # Connect and run all queries
         with connect(
             host = login.args["host"],
             user = login.args["user"],
@@ -113,6 +129,7 @@ def init(login: Login) -> int:
                     create_modelsets_query,
                     create_datasets_query,
                     create_models_query,
+                    create_endpoints_query,
                     create_init_proj_query,
                     create_init_modelset_query,
                 ):
@@ -132,7 +149,7 @@ def destroy(login: Login) -> int:
     if not check_for_db_status:
         return STATUS_MYSQL_DB_NO_EX
     
-    # Create database volta
+    # Drop database volta
     try:
         with connect(
             host = login.args["host"],
