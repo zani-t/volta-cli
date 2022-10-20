@@ -1,4 +1,4 @@
-from volta_cli import __version__
+from vcx import __version__
 
 
 def test_version():

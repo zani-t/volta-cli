@@ -1,8 +1,8 @@
 from flask import Flask
 from flask_restful import Resource, Api
 
-from volta_cli import SUCCESS
-from volta_cli.server import mysql_server
+from vcx import SUCCESS
+from vcx.server import mysql_server
 
 app = Flask(__name__)
 api = Api(app)

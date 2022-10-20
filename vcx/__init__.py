@@ -14,6 +14,14 @@ class LoginResponse(NamedTuple):
     login: Login
     response: int
 
+class IDResponse(NamedTuple):
+    id: int
+    response: int
+
+class RawResponse(NamedTuple):
+    output: str
+    response: str
+
 __app_name__ = 'volta-cli'
 __version__ = '0.1.0'
 
@@ -27,8 +35,9 @@ __version__ = '0.1.0'
     ERR_MYSQL_DB,
     ERR_MYSQL_QUERY,
     STATUS_MYSQL_DB_EX,
-    STATUS_MYSQL_DB_NO_EX
-) = range(10)
+    STATUS_MYSQL_DB_NO_EX,
+    STATUS_PROJ_DUP,
+) = range(11)
 
 ERRORS = {
     ERR_CONFIG_WRITE : "[Config write error]",
@@ -40,4 +49,5 @@ ERRORS = {
     ERR_MYSQL_QUERY : "[MySQL query error]",
     STATUS_MYSQL_DB_EX : "[MySQL database 'volta' exists]",
     STATUS_MYSQL_DB_NO_EX : "[MySQL database 'volta' doesn't exist]",
+    STATUS_PROJ_DUP : "[MySQL project exists already]",
 }

@@ -1,15 +1,15 @@
 import typer
 
-import configparser
+import configparser, pathlib
 
 from pathlib import Path
 
-from volta_cli import (
+from vcx import (
     Login, LoginResponse,
-    ERR_CONFIG_FILE, ERR_CONFIG_WRITE, ERR_CONFIG_DIR, ERR_MYSQL_CONN, SUCCESS,
+    ERR_CONFIG_FILE, ERR_CONFIG_WRITE, ERR_CONFIG_DIR, ERR_MYSQL_CONN, STATUS_MYSQL_DB_NO_EX, SUCCESS,
     __app_name__,
 )
-from volta_cli.server import mysql_server
+from vcx.server import mysql_server
 
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini"
@@ -24,8 +24,8 @@ def read_config() -> LoginResponse:
     config_parser = configparser.ConfigParser()
     config_parser.read(CONFIG_FILE_PATH)
     login = Login(
-        hostname=config_parser["Login"]["host"],
-        username=config_parser["Login"]["user"],
+        host=config_parser["Login"]["host"],
+        user=config_parser["Login"]["user"],
         password=config_parser["Login"]["password"]
     )
     if config_parser.has_option("Login", "database"):
@@ -42,18 +42,23 @@ def read_config() -> LoginResponse:
     
     return LoginResponse(login, SUCCESS)
 
-def write_config(login: Login) -> int:
+def write_config(
+    login: Login,
+    proj_name: str="Unsorted",
+    modelset_name: str="Unsorted"
+) -> int:
     """ init_user -> Set login details in config file """
     # Check if MySQL login is valid
     ping_status = mysql_server.ping(login)
     if ping_status == ERR_MYSQL_CONN:
         return ERR_MYSQL_CONN
 
+    # If database exists -> set to 'volta'
     if not ping_status:
         login.args.update({
             "database" : "volta",
-            "project" : "Unsorted",
-            "modelset" : "Unsorted",
+            "project" : proj_name,
+            "modelset" : modelset_name,
         })
     
     # Create config file and check if user exists already
@@ -63,7 +68,6 @@ def write_config(login: Login) -> int:
 
     # Write to config file
     config_parser = configparser.ConfigParser()
-    
     config_parser["Login"] = login.args
     try:
         with CONFIG_FILE_PATH.open("w") as file:

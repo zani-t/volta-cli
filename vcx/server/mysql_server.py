@@ -2,9 +2,9 @@
 
 from mysql.connector import connect, Error
 
-from volta_cli import (
-    Login,
-    ERR_MYSQL_CONN, ERR_MYSQL_DB, ERR_MYSQL_QUERY, STATUS_MYSQL_DB_EX, STATUS_MYSQL_DB_NO_EX, SUCCESS,
+from vcx import (
+    Login, IDResponse, RawResponse,
+    ERR_MYSQL_CONN, ERR_MYSQL_QUERY, STATUS_MYSQL_DB_EX, STATUS_MYSQL_DB_NO_EX, STATUS_PROJ_DUP, SUCCESS,
     __app_name__,
 )
 
@@ -21,6 +21,25 @@ def ping(login: Login) -> int:
     
     # Valid connection
     return SUCCESS
+
+def raw(login: Login, query: str) -> RawResponse:
+    """ Execute raw MySQL commands (intended for sorting) """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                output = map(str, cursor.fetchall())
+                return ("\n".join(output), SUCCESS)
+    except Error as e:
+        # print(e)
+        pass
+    
+    return (None, ERR_MYSQL_QUERY)
 
 """ DATABASE LEVEL FUNCTIONS """
 
@@ -177,10 +196,143 @@ def _check_for_db(login: Login) -> int:
     
     return ERR_MYSQL_CONN
 
+# check for project
+
+def _get_proj_id(login: Login, name: str) -> IDResponse:
+    """  """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            get_id_query = f"""
+            SELECT id FROM projects WHERE name = '{name}'
+            """
+            with conn.cursor() as cursor:
+                cursor.execute(get_id_query)
+                # print(list(cursor.fetchone())[0]) #
+                return (list(cursor.fetchone())[0], SUCCESS)
+
+    except Error as e:
+        print(e)
+        return (None, ERR_MYSQL_QUERY)
+
 """ PROJECT LEVEL COMMANDS """
 
+def createproj(login: Login, name: str, desc: str) -> int:
+    """ Create project """
+    # Create project with given name and description
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            duplicate = _check_duplicate(login, "projects", name)
+            if duplicate:
+                return STATUS_PROJ_DUP
+            
+            create_query = f"""
+            INSERT INTO projects (name, dsc)
+            VALUES ("{name}", "{desc}")
+            """
+            with conn.cursor() as cursor:
+                cursor.execute(create_query)
+                conn.commit()
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
 
+    return SUCCESS
 
-""" GROUP LEVEL COMMANDS """
+def deleteproj(login: str, name: str) -> int:
+    """ Delete project """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            proj_id, get_proj_id_error = _get_proj_id(login, name)
+            print(proj_id, get_proj_id_error) #
+            if get_proj_id_error:
+                return get_proj_id_error
+
+            # Delete all models with projet id project name id
+            delete_models_query = f"DELETE FROM models WHERE project_id = {proj_id}"
+            # Delete all datasets
+            delete_dataset_query = f"DELETE FROM datasets WHERE project_id = {proj_id}"
+            # Delete all modelsets
+            delete_modelset_query = f"DELETE FROM modelsets WHERE project_id = {proj_id}"
+            # Delete project
+            delete_project_query = f"DELETE FROM projects where id = {proj_id}"
+            with conn.cursor() as cursor:
+                for query in (
+                    delete_models_query,
+                    delete_dataset_query,
+                    delete_modelset_query,
+                    delete_project_query,
+                ):
+                    print(query)
+                    cursor.execute(query)
+                    conn.commit()
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
+
+def _check_duplicate(login: Login, level: str, name: str) -> int:
+    """ unfinished Check for duplicate names in database """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            check_duplicate_query = f"""
+            SELECT * FROM {level} WHERE name = '{name}'
+            """
+            with conn.cursor() as cursor:
+                cursor.execute(check_duplicate_query)
+                return len(cursor.fetchall())
+    except Error as e:
+        pass
+
+    return ERR_MYSQL_QUERY
+
+""" MODELSET LEVEL COMMANDS """
+
+def createmodelset(login: Login, project: str, name: str, desc: str) -> int:
+    """ Create modelset """
+    # Create modelset with given name and description
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            proj_id, get_proj_id_error = _get_proj_id(login, project)
+            if get_proj_id_error:
+                return get_proj_id_error
+
+            create_query = f"""
+            INSERT INTO modelsets (name, dsc)
+            VALUES ("{proj_id}, {name}", "{desc}")
+            """
+            with conn.cursor() as cursor:
+                cursor.execute(create_query)
+                conn.commit()
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
 
 """ MODEL LEVEL COMMANDS """ 

@@ -1,10 +1,39 @@
 import typer
 from typing import Optional
 
-from volta_cli import Login, config, ERRORS, __app_name__, __version__
-from volta_cli.server import flask_server, mysql_server
+from vcx import Login, config, ERRORS, __app_name__, __version__
+from vcx.server import flask_server, mysql_server
 
 app = typer.Typer()
+
+@app.command()
+def raw(
+    query: str = typer.Option(
+        ...,
+        prompt="Enter MySQL query",
+    )
+) -> None:
+    """ Run raw MySQL """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    output, raw_error = mysql_server.raw(login, query)
+    if raw_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[raw_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
+
+    return
 
 """ CONFIGURATION COMMANDS """
 
@@ -170,7 +199,7 @@ def init() -> None:
         raise typer.Exit(1)
     
     typer.secho(
-        f"[Volta] Successfully initialized database 'volta', tables 'projects', 'modelsets', 'datasets', 'models', and 'endpoints', project 'unsorted', and group 'unsorted'",
+        f"[Volta] Successfully initialized database 'volta'",
         fg=typer.colors.GREEN,
     )
 
@@ -227,20 +256,186 @@ def destroy(
 
 """ PROJECT LEVEL """
 
-# create project
-# ...
+@app.command()
+def createproj(
+    name: str = typer.Option(
+        ...,
+        "--name",
+        "-n",
+        prompt="Project name",
+    ),
+    desc: str = typer.Option(
+        ...,
+        "--desc",
+        "-d",
+        prompt="Project description",
+    )
+) -> None:
+    """ Create new project """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    createproj_error = mysql_server.createproj(login, name, desc)
+    if createproj_error:
+        typer.secho(
+            f'[Volta] MySQL project creation failed with error "{ERRORS[createproj_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
-# delete project
-# ...
+    # Valid
+    typer.secho(
+        f'[Volta] Created project name={name}',
+        fg=typer.colors.GREEN,
+    )
 
-# list projects
-# ...
+    return
 
-# enter project
+@app.command()
+def deleteproj(
+    name: str = typer.Option(
+        ...,
+        "--name",
+        "-n",
+        prompt="Project name",
+    ),
+    confirm: str = typer.Option(
+        ...,
+        prompt="Confirm you want to delete this project (forever!). Enter 'y'",
+    ),
+) -> None:
+    """ Delete project """
+    # Make sure not 'Unsorted'
+    if name == "Unsorted":
+        typer.secho(
+            f"[Volta] Project 'Unsorted' cannot be removed.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Cancel if not confirmed
+    if confirm != 'y':
+        typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
+        raise typer.Exit(1)
 
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Delete
+    deleteproj_error = mysql_server.deleteproj(login, name)
+    if deleteproj_error:
+        typer.secho(
+            f'[Volta] MySQL project deletion failed with error "{ERRORS[deleteproj_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
-# exit project
-# ...
+    # Valid
+    typer.secho(
+        f'[Volta] Deleted project name={name}',
+        fg=typer.colors.GREEN,
+    )
+
+    return
+
+@app.command()
+def listprojects() -> None:
+    """ List projects """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    output, query_error = mysql_server.raw(login, "SELECT * FROM projects")
+    if query_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[query_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
+
+    return
+
+@app.command()
+def enterproj(
+    name: str = typer.Option(
+        ...,
+        "--name",
+        "-n",
+        prompt="Project name",
+    ),
+) -> None:
+    """ Enter project """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Set config file
+    write_config_error = config.write_config(login, proj_name=name)
+    if write_config_error:
+        typer.secho(
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    return
+
+@app.command()
+def exitproj() -> None:
+    """ Exit project """
+
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    if login.args["project"] == "Unsorted":
+        typer.secho(
+            f"[Volta] Already in project 'Unsorted'",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    login.args["project"] = "Unsorted"
+
+    # Set config file
+    write_config_error = config.write_config(login)
+    if write_config_error:
+        typer.secho(
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    return
 
 """ MODELSET LEVEL """
 
