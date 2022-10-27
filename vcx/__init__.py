@@ -36,8 +36,9 @@ __version__ = '0.1.0'
     ERR_MYSQL_QUERY,
     STATUS_MYSQL_DB_EX,
     STATUS_MYSQL_DB_NO_EX,
-    STATUS_PROJ_DUP,
-) = range(11)
+    STATUS_MYSQL_PROJ_EX,
+    STATUS_MYSQL_PROJ_NO_EX
+) = range(12)
 
 ERRORS = {
     ERR_CONFIG_WRITE : "[Config write error]",
@@ -49,5 +50,6 @@ ERRORS = {
     ERR_MYSQL_QUERY : "[MySQL query error]",
     STATUS_MYSQL_DB_EX : "[MySQL database 'volta' exists]",
     STATUS_MYSQL_DB_NO_EX : "[MySQL database 'volta' doesn't exist]",
-    STATUS_PROJ_DUP : "[MySQL project exists already]",
+    STATUS_MYSQL_PROJ_EX : "[MySQL project exists already]",
+    STATUS_MYSQL_PROJ_NO_EX : "[MySQL project does not exist]"
 }

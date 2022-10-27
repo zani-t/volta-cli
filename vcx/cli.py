@@ -53,11 +53,11 @@ def status() -> None:
     
     ext = ""
     if "database" in login.args:
-        ext = f', project={login.args["project"]}, modelset={login.args["modelset"]}'
+        ext = f'\nproject={login.args["project"]}\nmodelset={login.args["modelset"]}'
 
     # Valid
     typer.secho(
-        f'[Volta] Logged in to MySQL with connection host={login.args["host"]}, user={login.args["user"]}' + ext,
+        f'[Volta] Logged in to MySQL with connection:\nhost={login.args["host"]}\nuser={login.args["user"]}' + ext,
         fg=typer.colors.GREEN,
     )
 
@@ -281,10 +281,19 @@ def createproj(
         )
         raise typer.Exit(1)
     
+    # Add entry to database
     createproj_error = mysql_server.createproj(login, name, desc)
     if createproj_error:
         typer.secho(
             f'[Volta] MySQL project creation failed with error "{ERRORS[createproj_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    createmset_error = mysql_server.createmset(login, name, "Unsorted", "Unsorted models")
+    if createmset_error:
+        typer.secho(
+            f'[Volta] MySQL project creation failed with error "{ERRORS[createmset_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -362,6 +371,7 @@ def listprojects() -> None:
         )
         raise typer.Exit(1)
     
+    # Raw SQL query -> str
     output, query_error = mysql_server.raw(login, "SELECT * FROM projects")
     if query_error:
         typer.secho(
@@ -394,13 +404,18 @@ def enterproj(
         raise typer.Exit(1)
 
     # Set config file
-    write_config_error = config.write_config(login, proj_name=name)
+    write_config_error = config.write_config(login, ping_project=True, proj_name=name)
     if write_config_error:
         typer.secho(
             f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+
+    typer.secho(
+        f'[Volta] Entered project name={name}',
+        fg=typer.colors.GREEN,
+    )
 
     return
 
@@ -425,6 +440,7 @@ def exitproj() -> None:
         raise typer.Exit(1)
 
     login.args["project"] = "Unsorted"
+    login.args["modelset"] = "Unsorted"
 
     # Set config file
     write_config_error = config.write_config(login)
@@ -434,25 +450,230 @@ def exitproj() -> None:
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+    
+    typer.secho(
+        f"[Volta] Now on project 'Unsorted'",
+        fg=typer.colors.GREEN,
+    )
 
     return
 
 """ MODELSET LEVEL """
 
-# create modelset
-# ...
+@app.command("creategroup")
+def createmset(
+    name: str = typer.Option(
+        ...,
+        "--name",
+        "-n",
+        prompt="Group name",
+    ),
+    desc: str = typer.Option(
+        ...,
+        "--desc",
+        "-d",
+        prompt="Project description",
+    )
+) -> None:
+    """ Create modelset """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Create modelset
+    createmset_error = mysql_server.createmset(login, login.args["project"], name, desc)
+    if createmset_error:
+        typer.secho(
+            f'[Volta] MySQL project creation failed with error "{ERRORS[createmset_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
-# delete modelset
-# ...
+    # Valid
+    typer.secho(
+        f'[Volta] Created group name={name}',
+        fg=typer.colors.GREEN,
+    )
 
-# list modelset
-# ...
+    return
 
-# enter modelset
-# ...
+@app.command("deletegroup")
+def deletemset(
+    name: str = typer.Option(
+        ...,
+        "--name",
+        "-n",
+        prompt="Group name",
+    ),
+    confirm: str = typer.Option(
+        ...,
+        prompt="Confirm you want to delete this group (forever!). Enter 'y'",
+    ),
+) -> None:
+    """ Delete modelsets """
+    # Make sure not 'Unsorted'
+    if name == "Unsorted":
+        typer.secho(
+            f"[Volta] Group 'Unsorted' cannot be removed.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Cancel if not confirmed
+    if confirm != 'y':
+        typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
+        raise typer.Exit(1)
 
-# exit modelset
-# ...
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Delete
+    deletemset_error = mysql_server.deletemset(login, name)
+    if deletemset_error:
+        typer.secho(
+            f'[Volta] MySQL group deletion failed with error "{ERRORS[deletemset_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(
+        f'[Volta] Deleted group name={name}',
+        fg=typer.colors.GREEN,
+    )
+
+    return
+
+@app.command("listgroups")
+def listmsets(
+    project: str = typer.Option(
+        None,
+        "--project",
+        "-p",
+    ),
+) -> None:
+    """ List groups """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    ext = ""
+    if project:
+        # check if project exists
+        proj_id, get_id_error = mysql_server.get_id(login, "projects", project)
+        if get_id_error:
+            typer.secho(
+                f'[Volta] Query failed with current status "{ERRORS[get_id_error]}"',
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+        ext = f" WHERE project_id = {proj_id}"
+
+    # Raw SQL query -> str
+    output, query_error = mysql_server.raw(login, f"SELECT * FROM modelsets{ext}")
+    if query_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[query_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
+
+    return
+
+@app.command("entergroup")
+def entermset(
+    name: str = typer.Option(
+        ...,
+        "--name",
+        "-n",
+        prompt="Project name",
+    ),
+) -> None:
+    """ Enter group """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Set config file
+    write_config_error = config.write_config(
+        login,
+        ping_project=True,
+        proj_name=login.args["project"],
+        modelset_name=name,
+    )
+    if write_config_error:
+        typer.secho(
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    typer.secho(
+        f'[Volta] Entered group name={name}',
+        fg=typer.colors.GREEN,
+    )
+
+    return
+
+@app.command("exitgroup")
+def exitmset() -> None:
+    """ Exit group """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    if login.args["modelset"] == "Unsorted":
+        typer.secho(
+            f"[Volta] Already in group 'Unsorted'",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    login.args["modelset"] = "Unsorted"
+
+    # Set config file
+    write_config_error = config.write_config(login)
+    if write_config_error:
+        typer.secho(
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(
+        f"[Volta] Now on group 'Unsorted'",
+        fg=typer.colors.GREEN,
+    )
+
+    return
 
 """ DATASET LEVEL """
 

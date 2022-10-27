@@ -44,14 +44,15 @@ def read_config() -> LoginResponse:
 
 def write_config(
     login: Login,
+    ping_project: bool = False,
     proj_name: str="Unsorted",
     modelset_name: str="Unsorted"
 ) -> int:
     """ init_user -> Set login details in config file """
     # Check if MySQL login is valid
-    ping_status = mysql_server.ping(login)
-    if ping_status == ERR_MYSQL_CONN:
-        return ERR_MYSQL_CONN
+    ping_status = mysql_server.ping(login, ping_project, proj_name, modelset_name)
+    if ping_status and ping_status != STATUS_MYSQL_DB_NO_EX:
+        return ping_status
 
     # If database exists -> set to 'volta'
     if not ping_status:
@@ -77,6 +78,17 @@ def write_config(
 
     return SUCCESS
 
+def destroy_user() -> int:
+    """ destroy_user -> Destroy config file if exists """
+    # Ensure config file exists
+    if not CONFIG_FILE_PATH.exists():
+        return ERR_CONFIG_FILE
+    
+    # Remove
+    CONFIG_FILE_PATH.unlink()
+
+    return SUCCESS
+
 def _init_config_file() -> int:
     """ _init_config_file -> Create config file if nonexistent """
     # Create directory
@@ -91,16 +103,5 @@ def _init_config_file() -> int:
             CONFIG_FILE_PATH.touch()
     except OSError:
         return ERR_CONFIG_FILE
-
-    return SUCCESS
-
-def destroy_user() -> int:
-    """ destroy_user -> Destroy config file if exists """
-    # Ensure config file exists
-    if not CONFIG_FILE_PATH.exists():
-        return ERR_CONFIG_FILE
-    
-    # Remove
-    CONFIG_FILE_PATH.unlink()
 
     return SUCCESS
