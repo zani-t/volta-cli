@@ -256,8 +256,8 @@ def destroy(
 
 """ PROJECT LEVEL """
 
-@app.command()
-def createproj(
+@app.command("cproject")
+def create_project(
     name: str = typer.Option(
         ...,
         "--name",
@@ -306,8 +306,8 @@ def createproj(
 
     return
 
-@app.command()
-def deleteproj(
+@app.command("dproject")
+def delete_project(
     name: str = typer.Option(
         ...,
         "--name",
@@ -359,8 +359,8 @@ def deleteproj(
 
     return
 
-@app.command()
-def listprojects() -> None:
+@app.command("lprojects")
+def list_projects() -> None:
     """ List projects """
     # Check login status
     login, login_error = config.read_config()
@@ -384,8 +384,8 @@ def listprojects() -> None:
 
     return
 
-@app.command()
-def enterproj(
+@app.command("enproject")
+def enter_projects(
     name: str = typer.Option(
         ...,
         "--name",
@@ -419,8 +419,8 @@ def enterproj(
 
     return
 
-@app.command()
-def exitproj() -> None:
+@app.command("exproject")
+def exit_projects() -> None:
     """ Exit project """
 
     # Check login status
@@ -460,8 +460,8 @@ def exitproj() -> None:
 
 """ MODELSET LEVEL """
 
-@app.command("creategroup")
-def createmset(
+@app.command("cgroup")
+def create_modelset(
     name: str = typer.Option(
         ...,
         "--name",
@@ -502,8 +502,8 @@ def createmset(
 
     return
 
-@app.command("deletegroup")
-def deletemset(
+@app.command("dgroup")
+def delete_modelset(
     name: str = typer.Option(
         ...,
         "--name",
@@ -555,8 +555,8 @@ def deletemset(
 
     return
 
-@app.command("listgroups")
-def listmsets(
+@app.command("lgroups")
+def list_modelsets(
     project: str = typer.Option(
         None,
         "--project",
@@ -598,8 +598,8 @@ def listmsets(
 
     return
 
-@app.command("entergroup")
-def entermset(
+@app.command("engroup")
+def enter_modelset(
     name: str = typer.Option(
         ...,
         "--name",
@@ -638,8 +638,8 @@ def entermset(
 
     return
 
-@app.command("exitgroup")
-def exitmset() -> None:
+@app.command("exgroup")
+def exit_modelset() -> None:
     """ Exit group """
     # Check login status
     login, login_error = config.read_config()
