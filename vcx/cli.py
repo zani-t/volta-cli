@@ -677,31 +677,83 @@ def exit_modelset() -> None:
 
 """ DATASET LEVEL """
 
-# create dataset
-# ...
+@app.command("cdataset")
+def create_dataset() -> None:
+    """ Create dataset """
 
-# delete dataset
-# ...
+    return
+
+@app.command("ddataset")
+def delete_dataset() -> None:
+    """ Delete dataset """
+    
+    return
+
+@app.command("ldatasets")
+def list_datasets() -> None:
+    """ List all datasets """
+    
+    return
+
+""" PREPROCESSING SCRIPT LEVEL """
+
+@app.command("cscript")
+def create_dataset() -> None:
+    """ Create preprocessing script """
+
+    return
+
+@app.command("dscript")
+def delete_dataset() -> None:
+    """ Delete preprocessing script """
+    
+    return
+
+@app.command("lscripts")
+def list_datasets() -> None:
+    """ List all preprocessing scripts """
+    
+    return
+
+# edit script
 
 """ MODEL LEVEL """
 
-# create model
-# ...
+@app.command("cmodel")
+def create_model() -> None:
+    """ Create model """
 
-# delete model
-# ...
+    return
 
-# list models
-# ...
+@app.command("dmodel")
+def delete_model() -> None:
+    """ Delete model """
+    
+    return
 
-# train model
-# ...
+@app.command("lmodels")
+def list_models() -> None:
+    """ List all models """
+    
+    return
 
-# deploy model
-# ...
+@app.command()
+def train() -> None:
+    """ Train model """
+    
+    return
 
-# pull model
-# ...
+@app.command()
+def deploy() -> None:
+    """ Deploy model as server endpoint """
+    
+    return
+
+@app.command()
+def pull() -> None:
+    """ Remove server endpoint model """
+    
+    return
 
 """ CLI LEVEL """
 
