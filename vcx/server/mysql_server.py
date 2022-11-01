@@ -94,20 +94,34 @@ def init(login: Login) -> int:
             FOREIGN KEY(modelset_id) REFERENCES modelsets(id)
         )
         """
-        create_models_query = """
-        CREATE TABLE models(
+        create_scripts_query = """
+        CREATE TABLE scripts(
             id INT AUTO_INCREMENT PRIMARY KEY,
             project_id INT,
             modelset_id INT,
             dataset_id INT,
             name VARCHAR(100),
             dsc VARCHAR(255),
-            arch VARCHAR(100),
-            hyperparams VARCHAR(255),
-            eval_metrics VARCHAR(255),
+            script VARCHAR(4096),
             FOREIGN KEY(project_id) REFERENCES projects(id),
             FOREIGN KEY(modelset_id) REFERENCES modelsets(id),
-            FOREIGN KEY(dataset_id) REFERENCES datasets(id)
+            FOREIGN KEY(dataset_id) REFERENCES dataets(id)
+        )
+        """
+        create_models_query = """
+        CREATE TABLE models(
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            project_id INT,
+            modelset_id INT,
+            dataset_id INT,
+            script_id INT,
+            name VARCHAR(100),
+            dsc VARCHAR(255),
+            arch VARCHAR(100),
+            FOREIGN KEY(project_id) REFERENCES projects(id),
+            FOREIGN KEY(modelset_id) REFERENCES modelsets(id),
+            FOREIGN KEY(dataset_id) REFERENCES datasets(id),
+            FOREIGN KEY(script_id) REFERENCES scripts(id)
         )
         """
         create_endpoints_query = """
@@ -117,7 +131,7 @@ def init(login: Login) -> int:
             alias VARCHAR(100),
             location TINYINT(1),
             address VARCHAR(100),
-            datatype VARCHAR(50),
+            datatype VARCHAR(255),
             v_framework VARCHAR(50),
             total_runs INT,
             avg_runtime FLOAT,
@@ -149,6 +163,7 @@ def init(login: Login) -> int:
                     create_projects_query,
                     create_modelsets_query,
                     create_datasets_query,
+                    create_scripts_query,
                     create_models_query,
                     create_endpoints_query,
                     create_init_proj_query,
@@ -195,6 +210,9 @@ def get_id(login: Login, level: str, name: str) -> IDResponse:
             password = login.args["password"],
             database = "volta",
         ) as conn:
+
+            ### ONLY REMOVE FROM CURRENT PROJECT/GROUP
+
             get_id_query = f"SELECT id FROM {level} WHERE name = '{name}'"
             with conn.cursor() as cursor:
                 # Try block obsolete in with block???
@@ -346,7 +364,7 @@ def _check_duplicate(login: Login, level: str, name: str) -> int:
 
 """ MODELSET LEVEL COMMANDS """
 
-def createmset(login: Login, project: str, name: str, desc: str) -> int:
+def createmset(login: Login, name: str, desc: str) -> int:
     """ Create modelset """
     # Create modelset with given name and description
     try:
@@ -361,7 +379,7 @@ def createmset(login: Login, project: str, name: str, desc: str) -> int:
             if duplicate:
                 return STATUS_MYSQL_PROJ_EX
                 
-            proj_id, get_proj_id_error = get_id(login, "projects", project)
+            proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
             if get_proj_id_error:
                 return get_proj_id_error
 
@@ -391,12 +409,18 @@ def deletemset(login: str, name: str) -> int:
             if get_mset_id_error:
                 return get_mset_id_error
 
-            # Delete all models with projet id project name id
-            delete_models_query = f"DELETE FROM models WHERE project_id = {mset_id}"
+            # Delete all models with modelset id modelset name id
+            delete_models_query = f"DELETE FROM models WHERE modelset_id = {mset_id}"
+            # Delete all scripts with modelset id modelset name id
+            delete_scripts_query = f"DELETE FROM scripts WHERE modelset_id = {mset_id}"
+            # Delete all datasets with modelset id modelset name id
+            delete_datasets_query = f"DELETE FROM datasets WHERE modelset_id = {mset_id}"
             # Delete all modelsets
-            delete_modelset_query = f"DELETE FROM modelsets WHERE project_id = {mset_id}"
+            delete_modelset_query = f"DELETE FROM modelsets WHERE id = {mset_id}"
             with conn.cursor() as cursor:
                 cursor.execute(delete_models_query)
+                cursor.execute(delete_scripts_query)
+                cursor.execute(delete_datasets_query)
                 cursor.execute(delete_modelset_query)
                 conn.commit()
             
@@ -405,6 +429,69 @@ def deletemset(login: str, name: str) -> int:
         return ERR_MYSQL_QUERY
 
     return SUCCESS
+
+""" DATASET LEVEL COMMANDS """ 
+
+def createdataset(login: Login, name: str, desc: str, location: int, address: str) -> int:
+    """ Create dataset """
+    # Create modelset with given name and description
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            duplicate = _check_duplicate(login, "datasets", name)
+            if duplicate:
+                return STATUS_MYSQL_PROJ_EX
+                
+            proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
+            if get_proj_id_error:
+                return get_proj_id_error
+            ms_id, get_ms_id_error = get_id(login, "modelsets", login.args["modelset"])
+            if get_ms_id_error:
+                return get_ms_id_error
+            
+            create_query = f"""
+            INSERT INTO datasets (project_id, modelset_id, name, dsc, location, address)
+            VALUES ({proj_id}, {ms_id}, "{name}", "{desc}", {location}, "{address}")
+            """
+            with conn.cursor() as cursor:
+                cursor.execute(create_query)
+                conn.commit()
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
+
+def deletedataset(login: str, name: str) -> int:
+    """ Delete dataset """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            dset_id, get_dset_id_error = get_id(login, "datasets", name)
+            if get_dset_id_error:
+                return get_dset_id_error
+
+            # Delete all datasets
+            delete_dataset_query = f"DELETE FROM datasets WHERE id = {dset_id}"
+            with conn.cursor() as cursor:
+                cursor.execute(delete_dataset_query)
+                conn.commit()
+            
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
+
+""" PREPROCESSING SCRIPT LEVEL COMMANDS """ 
 
 """ MODEL LEVEL COMMANDS """ 
 

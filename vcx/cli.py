@@ -8,10 +8,7 @@ app = typer.Typer()
 
 @app.command()
 def raw(
-    query: str = typer.Option(
-        ...,
-        prompt="Enter MySQL query",
-    )
+    query: str = typer.Option(..., prompt="Enter MySQL query")
 ) -> None:
     """ Run raw MySQL """
     # Check login status
@@ -65,23 +62,9 @@ def status() -> None:
 
 @app.command()
 def login(
-    hostname: str = typer.Option(
-        str(Login.args["host"]),
-        "--hostname",
-        "-h",
-        prompt="MySQL hostname",
-    ),
-    username: str = typer.Option(
-        str(Login.args["user"]),
-        "--username",
-        "-u",
-        prompt="MySQL username",
-    ),
-    password: str = typer.Option(
-        ...,
-        prompt="MySQL password",
-        hide_input=True
-    ),
+    hostname: str = typer.Option(str(Login.args["host"]), "--hostname", "-h",prompt="MySQL hostname"),
+    username: str = typer.Option(str(Login.args["user"]), "--username", "-u",prompt="MySQL username"),
+    password: str = typer.Option(..., prompt="MySQL password", hide_input=True),
 ) -> None:
     """ Login -> Create config file with credentials """
     # Initialize login object and write to config
@@ -208,10 +191,7 @@ def init() -> None:
 @app.command()
 def destroy(
     # Confirmation prompt
-    confirm: str = typer.Option(
-        ...,
-        prompt="Confirm you want to delete database 'volta' (forever!). Enter 'y'",
-    )
+    confirm: str = typer.Option(..., prompt="Confirm you want to delete database 'volta' (forever!). Enter 'y'")
 ) -> None:
     """ Delete database 'volta' """
     # Cancel if not confirmed
@@ -258,18 +238,8 @@ def destroy(
 
 @app.command("cproject")
 def create_project(
-    name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        prompt="Project name",
-    ),
-    desc: str = typer.Option(
-        ...,
-        "--desc",
-        "-d",
-        prompt="Project description",
-    )
+    name: str = typer.Option(..., "--name", "-n", prompt="Project name"),
+    desc: str = typer.Option(..., "--desc", "-d", prompt="Project description")
 ) -> None:
     """ Create new project """
     # Check login status
@@ -308,12 +278,7 @@ def create_project(
 
 @app.command("dproject")
 def delete_project(
-    name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        prompt="Project name",
-    ),
+    name: str = typer.Option(..., "--name", "-n", prompt="Project name"),
     confirm: str = typer.Option(
         ...,
         prompt="Confirm you want to delete this project (forever!). Enter 'y'",
@@ -386,12 +351,7 @@ def list_projects() -> None:
 
 @app.command("enproject")
 def enter_projects(
-    name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        prompt="Project name",
-    ),
+    name: str = typer.Option(..., "--name", "-n", prompt="Project name"),
 ) -> None:
     """ Enter project """
     # Check login status
@@ -462,18 +422,8 @@ def exit_projects() -> None:
 
 @app.command("cgroup")
 def create_modelset(
-    name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        prompt="Group name",
-    ),
-    desc: str = typer.Option(
-        ...,
-        "--desc",
-        "-d",
-        prompt="Project description",
-    )
+    name: str = typer.Option(..., "--name", "-n", prompt="Group name"),
+    desc: str = typer.Option(..., "--desc", "-d", prompt="Project description")
 ) -> None:
     """ Create modelset """
     # Check login status
@@ -486,7 +436,7 @@ def create_modelset(
         raise typer.Exit(1)
     
     # Create modelset
-    createmset_error = mysql_server.createmset(login, login.args["project"], name, desc)
+    createmset_error = mysql_server.createmset(login, name, desc)
     if createmset_error:
         typer.secho(
             f'[Volta] MySQL project creation failed with error "{ERRORS[createmset_error]}"',
@@ -504,16 +454,8 @@ def create_modelset(
 
 @app.command("dgroup")
 def delete_modelset(
-    name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        prompt="Group name",
-    ),
-    confirm: str = typer.Option(
-        ...,
-        prompt="Confirm you want to delete this group (forever!). Enter 'y'",
-    ),
+    name: str = typer.Option(..., "--name", "-n", prompt="Group name"),
+    confirm: str = typer.Option(..., prompt="Confirm you want to delete this group (forever!). Enter 'y'"),
 ) -> None:
     """ Delete modelsets """
     # Make sure not 'Unsorted'
@@ -557,11 +499,7 @@ def delete_modelset(
 
 @app.command("lgroups")
 def list_modelsets(
-    project: str = typer.Option(
-        None,
-        "--project",
-        "-p",
-    ),
+    project: str = typer.Option(None, "--project", "-p"),
 ) -> None:
     """ List groups """
     # Check login status
@@ -600,12 +538,7 @@ def list_modelsets(
 
 @app.command("engroup")
 def enter_modelset(
-    name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        prompt="Project name",
-    ),
+    name: str = typer.Option(..., "--name", "-n", prompt="Project name"),
 ) -> None:
     """ Enter group """
     # Check login status
@@ -678,15 +611,86 @@ def exit_modelset() -> None:
 """ DATASET LEVEL """
 
 @app.command("cdataset")
-def create_dataset() -> None:
+def create_dataset(
+    name: str = typer.Option(..., '-n', "--name", prompt="Dataset name"),
+    desc: str = typer.Option(..., '-d', "--desc", prompt="Dataset description"), # list?
+    location: str = typer.Option(..., '-l', "--location", prompt="Dataset location - enter 'local' or 'online'"),
+    address: str = typer.Option(..., '-a', "--address", prompt="Dataset address")
+) -> None:
     """ Create dataset """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
+    int_location = 0
+
+    # Check location
+    if location == 'online':
+        int_location = 1
+    elif location != 'local':
+        typer.secho(
+            f'[Volta] Dataset creation cancelled -- invalid location.',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Create dataset
+    createds_error = mysql_server.createdataset(login, name, desc, int_location, address)
+    if createds_error:
+        typer.secho(
+            f'[Volta] MySQL project creation failed with error "{ERRORS[createds_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(
+        f'[Volta] Created group name={name}',
+        fg=typer.colors.GREEN,
+    )
+    
     return
 
 @app.command("ddataset")
-def delete_dataset() -> None:
+def delete_dataset(
+    name: str = typer.Option(..., "--name", "-n", prompt="Group name"),
+    confirm: str = typer.Option(..., prompt="Confirm you want to delete this dataset entry. Enter 'y'"),
+) -> None:
     """ Delete dataset """
+    # Cancel if not confirmed
+    if confirm != 'y':
+        typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
     
+    # Delete
+    deletedset_error = mysql_server.deletedataset(login, name)
+    if deletedset_error:
+        typer.secho(
+            f'[Volta] MySQL dataset deletion failed with error "{ERRORS[deletedset_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(
+        f'[Volta] Deleted group name={name}',
+        fg=typer.colors.GREEN,
+    )
+
     return
 
 @app.command("ldatasets")
@@ -695,10 +699,21 @@ def list_datasets() -> None:
     
     return
 
+@app.command("vdataset")
+def view_dataset() -> None:
+    """ View dataset """
+    
+    return
+
 """ PREPROCESSING SCRIPT LEVEL """
 
 @app.command("cscript")
-def create_dataset() -> None:
+def create_dataset(
+    name: str = typer.Option(..., '-n', "--name", prompt="Script name"),
+    desc: str = typer.Option(..., '-d', "--desc", prompt="Script description"), # list?
+    dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Script dataset"),
+    # script commands
+) -> None:
     """ Create preprocessing script """
 
     return
@@ -720,7 +735,15 @@ def list_datasets() -> None:
 """ MODEL LEVEL """
 
 @app.command("cmodel")
-def create_model() -> None:
+def create_model(
+    name: str = typer.Option(..., '-n', "--name", prompt="Model name"),
+    desc: str = typer.Option(..., '-d', "--desc", prompt="Model description"), # list?
+    dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Model dataset"),
+    arch: str = typer.Option(..., '-a', "--arch", prompt="Model architecture"),
+    script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script"),
+    # hyperparameters - list
+    # eval metrics - list
+) -> None:
     """ Create model """
 
     return
@@ -738,7 +761,9 @@ def list_models() -> None:
     return
 
 @app.command()
-def train() -> None:
+def train(
+    name: str = typer.Option(..., '-n', "--name", prompt="Model name")
+) -> None:
     """ Train model """
     
     return
