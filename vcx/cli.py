@@ -2,6 +2,7 @@ import typer
 from typing import Optional
 
 from vcx import Login, config, ERRORS, __app_name__, __version__
+from vcx.ml_utils import display
 from vcx.server import flask_server, mysql_server
 
 app = typer.Typer()
@@ -696,12 +697,59 @@ def delete_dataset(
 @app.command("ldatasets")
 def list_datasets() -> None:
     """ List all datasets """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
     
+    # Raw SQL query -> str
+    output, query_error = mysql_server.raw(login, "SELECT * FROM datasets")
+    if query_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[query_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
     return
 
 @app.command("vdataset")
-def view_dataset() -> None:
+def view_dataset(
+    name: str = typer.Option(..., "--name", "-n", prompt="Dataset name")
+) -> None:
     """ View dataset """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Get dataset address
+    location, address, getds_error = mysql_server.getdataset(login, name)
+    if getds_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[getds_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    columns, listcols_error = display.list_columns(location, address)
+    if listcols_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[listcols_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta] COLUMNS:\n\n{columns}', fg=typer.colors.GREEN)
     
     return
 
@@ -715,7 +763,7 @@ def create_dataset(
     # script commands
 ) -> None:
     """ Create preprocessing script """
-
+    
     return
 
 @app.command("dscript")
@@ -778,6 +826,13 @@ def deploy() -> None:
 def pull() -> None:
     """ Remove server endpoint model """
     
+    return
+
+from pathlib import Path
+@app.command()
+def test() -> None:
+    p = Path(r'/home').glob('**/*')
+    print([x for x in p if x.is_file()])
     return
 
 """ CLI LEVEL """

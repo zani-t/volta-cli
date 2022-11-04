@@ -3,9 +3,9 @@
 from mysql.connector import connect, Error
 
 from vcx import (
-    Login, IDResponse, RawResponse,
+    Login, DatasetResponseSQL, IDResponse, RawResponse,
     ERR_MYSQL_CONN, ERR_MYSQL_QUERY, STATUS_MYSQL_DB_EX, STATUS_MYSQL_DB_NO_EX,
-    STATUS_MYSQL_PROJ_EX, STATUS_MYSQL_PROJ_NO_EX, SUCCESS,
+    STATUS_MYSQL_PROJ_EX, STATUS_MYSQL_PROJ_NO_EX, STATUS_MYSQL_ENTRY_NO_EX,  SUCCESS,
     __app_name__,
 )
 
@@ -105,7 +105,7 @@ def init(login: Login) -> int:
             script VARCHAR(4096),
             FOREIGN KEY(project_id) REFERENCES projects(id),
             FOREIGN KEY(modelset_id) REFERENCES modelsets(id),
-            FOREIGN KEY(dataset_id) REFERENCES dataets(id)
+            FOREIGN KEY(dataset_id) REFERENCES datasets(id)
         )
         """
         create_models_query = """
@@ -442,13 +442,18 @@ def createdataset(login: Login, name: str, desc: str, location: int, address: st
             password = login.args["password"],
             database = "volta",
         ) as conn:
+            
+            print("checking datasets")
             duplicate = _check_duplicate(login, "datasets", name)
             if duplicate:
                 return STATUS_MYSQL_PROJ_EX
-                
+            
+            print("getting project id")
             proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
             if get_proj_id_error:
                 return get_proj_id_error
+            
+            print("getting modelset id")
             ms_id, get_ms_id_error = get_id(login, "modelsets", login.args["modelset"])
             if get_ms_id_error:
                 return get_ms_id_error
@@ -491,7 +496,31 @@ def deletedataset(login: str, name: str) -> int:
 
     return SUCCESS
 
-""" PREPROCESSING SCRIPT LEVEL COMMANDS """ 
+def getdataset(login: str, name: str) -> DatasetResponseSQL:
+    """ Retrieve str dataset address """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            create_query = f'SELECT location, address FROM datasets WHERE name = "{name}"'
+            with conn.cursor() as cursor:
+                cursor.execute(create_query)
+                response = cursor.fetchall()
+                if not len(response):
+                    return (None, None, STATUS_MYSQL_ENTRY_NO_EX)
+                
+                location, address = response[0]
+                return (int(location), address, SUCCESS)
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
+
+""" PREPROCESSING SCRIPT LEVEL COMMANDS """
 
 """ MODEL LEVEL COMMANDS """ 
 
