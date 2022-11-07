@@ -1,6 +1,6 @@
 import typer
 
-import configparser, pathlib
+import configparser
 
 from pathlib import Path
 
@@ -33,6 +33,7 @@ def read_config() -> LoginResponse:
             "database" : "volta",
             "project" : config_parser["Login"]["project"],
             "modelset" : config_parser["Login"]["modelset"],
+            "script" : config_parser["Login"]["script"]
         })
 
     # Test connection
@@ -46,11 +47,12 @@ def write_config(
     login: Login,
     ping_project: bool = False,
     proj_name: str="Unsorted",
-    modelset_name: str="Unsorted"
+    modelset_name: str="Unsorted",
+    script_name: str="",
 ) -> int:
     """ init_user -> Set login details in config file """
     # Check if MySQL login is valid
-    ping_status = mysql_server.ping(login, ping_project, proj_name, modelset_name)
+    ping_status = mysql_server.ping(login, ping_project, proj_name, modelset_name, script_name)
     if ping_status and ping_status != STATUS_MYSQL_DB_NO_EX:
         return ping_status
 
@@ -60,6 +62,7 @@ def write_config(
             "database" : "volta",
             "project" : proj_name,
             "modelset" : modelset_name,
+            "script" : script_name
         })
     
     # Create config file and check if user exists already

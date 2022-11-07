@@ -37,7 +37,7 @@ def raw(
 
 @app.command()
 def status() -> None:
-    """ Status -> Check for user in config file """
+    """ Check for user in config file """
     # Get login response
     login, read_config_error = config.read_config()
 
@@ -52,6 +52,8 @@ def status() -> None:
     ext = ""
     if "database" in login.args:
         ext = f'\nproject={login.args["project"]}\nmodelset={login.args["modelset"]}'
+        if login.args["script"] != "":
+            ext += f'\nscript={login.args["script"]}'
 
     # Valid
     typer.secho(
@@ -67,7 +69,7 @@ def login(
     username: str = typer.Option(str(Login.args["user"]), "--username", "-u",prompt="MySQL username"),
     password: str = typer.Option(..., prompt="MySQL password", hide_input=True),
 ) -> None:
-    """ Login -> Create config file with credentials """
+    """ Create config file with credentials """
     # Initialize login object and write to config
     login = Login(
         host=hostname,
@@ -92,7 +94,7 @@ def login(
 
 @app.command()
 def logout():
-    """ Logout -> Destroy config file """
+    """ Destroy config file """
     # Check for error
     destroy_user_error = config.destroy_user()
     if destroy_user_error:
@@ -111,7 +113,7 @@ def logout():
 
 @app.command()
 def start() -> None:
-    """ start -> Check login status, update & run server """
+    """ Check login status, update & run server """
     # Check status
     login, login_error = config.read_config()
 
@@ -163,7 +165,7 @@ def init() -> None:
     init_error = mysql_server.init(login)
     if init_error:
         typer.secho(
-            f'[Volta] Database initialization failed with status "{ERRORS[init_error]}"',
+            f'[Volta] MySQL database initialization failed with status "{ERRORS[init_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -183,7 +185,7 @@ def init() -> None:
         raise typer.Exit(1)
     
     typer.secho(
-        f"[Volta] Successfully initialized database 'volta'",
+        f"[Volta] Successfully initialized MySQL database 'volta'",
         fg=typer.colors.GREEN,
     )
 
@@ -213,7 +215,7 @@ def destroy(
     drop_error = mysql_server.destroy(login)
     if drop_error:
         typer.secho(
-            f'[Volta] Database destruction failed with status "{ERRORS[drop_error]}"',
+            f'[Volta] MySQL database destruction failed with status "{ERRORS[drop_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -231,7 +233,7 @@ def destroy(
         raise typer.Exit(1)
     
     # Success
-    typer.secho(f"[Volta] Destroyed database 'volta'", fg=typer.colors.BRIGHT_YELLOW)
+    typer.secho(f"[Volta] Destroyed MySQL database 'volta'", fg=typer.colors.BRIGHT_YELLOW)
 
     return
 
@@ -256,7 +258,7 @@ def create_project(
     createproj_error = mysql_server.createproj(login, name, desc)
     if createproj_error:
         typer.secho(
-            f'[Volta] MySQL project creation failed with error "{ERRORS[createproj_error]}"',
+            f'[Volta] Project creation failed with error "{ERRORS[createproj_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -264,7 +266,7 @@ def create_project(
     createmset_error = mysql_server.createmset(login, name, "Unsorted", "Unsorted models")
     if createmset_error:
         typer.secho(
-            f'[Volta] MySQL project creation failed with error "{ERRORS[createmset_error]}"',
+            f'[Volta] Project creation failed with error "{ERRORS[createmset_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -383,7 +385,6 @@ def enter_projects(
 @app.command("exproject")
 def exit_projects() -> None:
     """ Exit project """
-
     # Check login status
     login, login_error = config.read_config()
     if login_error:
@@ -436,11 +437,11 @@ def create_modelset(
         )
         raise typer.Exit(1)
     
-    # Create modelset
+    # Create modelset entry
     createmset_error = mysql_server.createmset(login, name, desc)
     if createmset_error:
         typer.secho(
-            f'[Volta] MySQL project creation failed with error "{ERRORS[createmset_error]}"',
+            f'[Volta] MySQL group creation failed with error "{ERRORS[createmset_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -539,7 +540,7 @@ def list_modelsets(
 
 @app.command("engroup")
 def enter_modelset(
-    name: str = typer.Option(..., "--name", "-n", prompt="Project name"),
+    name: str = typer.Option(..., "--name", "-n", prompt="Group name"),
 ) -> None:
     """ Enter group """
     # Check login status
@@ -644,14 +645,14 @@ def create_dataset(
     createds_error = mysql_server.createdataset(login, name, desc, int_location, address)
     if createds_error:
         typer.secho(
-            f'[Volta] MySQL project creation failed with error "{ERRORS[createds_error]}"',
+            f'[Volta] MySQL dataset creation failed with error "{ERRORS[createds_error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
 
     # Valid
     typer.secho(
-        f'[Volta] Created group name={name}',
+        f'[Volta] Created dataset name={name}',
         fg=typer.colors.GREEN,
     )
     
@@ -688,7 +689,7 @@ def delete_dataset(
 
     # Valid
     typer.secho(
-        f'[Volta] Deleted group name={name}',
+        f'[Volta] Deleted dataset name={name}',
         fg=typer.colors.GREEN,
     )
 
@@ -716,6 +717,7 @@ def list_datasets() -> None:
         raise typer.Exit(1)
     
     typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
+
     return
 
 @app.command("vdataset")
@@ -741,6 +743,7 @@ def view_dataset(
         )
         raise typer.Exit(1)
     
+    # Load columns using pandas
     columns, listcols_error = display.list_columns(location, address)
     if listcols_error:
         typer.secho(
@@ -756,26 +759,198 @@ def view_dataset(
 """ PREPROCESSING SCRIPT LEVEL """
 
 @app.command("cscript")
-def create_dataset(
+def create_script(
     name: str = typer.Option(..., '-n', "--name", prompt="Script name"),
-    desc: str = typer.Option(..., '-d', "--desc", prompt="Script description"), # list?
+    desc: str = typer.Option(..., '-d', "--desc", prompt="Script description"),
     dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Script dataset"),
-    # script commands
 ) -> None:
     """ Create preprocessing script """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
     
+    # Create script entry
+    createscript_error = mysql_server.createscript(login, name, desc, dataset)
+    if createscript_error:
+        typer.secho(
+            f'[Volta] MySQL preprocessing script creation failed with error "{ERRORS[createscript_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(
+        f'[Volta] Created empty preprocessing script name={name}',
+        fg=typer.colors.GREEN,
+    )
+
     return
 
 @app.command("dscript")
-def delete_dataset() -> None:
+def delete_script(
+    name: str = typer.Option(..., "-n", "--name", prompt="Preprocessing script name"),
+    confirm: str = typer.Option(..., prompt="Confirm you want to delete this preprocessing script. Enter 'y'"),
+) -> None:
     """ Delete preprocessing script """
+    # Cancel if not confirmed
+    if confirm != 'y':
+        typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Delete
+    deletescript_error = mysql_server.deletescript(login, name)
+    if deletescript_error:
+        typer.secho(
+            f'[Volta] MySQL script deletion failed with error "{ERRORS[deletescript_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(
+        f'[Volta] Deleted script name={name}',
+        fg=typer.colors.GREEN,
+    )
     
     return
 
-@app.command("lscripts")
-def list_datasets() -> None:
-    """ List all preprocessing scripts """
+@app.command("enscript")
+def enter_script(
+    name: str = typer.Option(..., "-n", "--name", prompt="Group name"),
+) -> None:
+    """ Enter editing mode for preprocessing script """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Set config file
+    write_config_error = config.write_config(
+        login,
+        ping_project=True,
+        proj_name=login.args["project"],
+        modelset_name=login.args["modelset"],
+        script_name=name,
+    )
+    if write_config_error:
+        typer.secho(
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    typer.secho(
+        f'[Volta] Now editing preprocessing script name={name}',
+        fg=typer.colors.GREEN,
+    )
+
+    return
+
+@app.command("exscript")
+def exit_script() -> None:
+    """ Exit editing mode for preprocessing script """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    if login.args["script"] == "":
+        typer.secho(
+            f"[Volta] Not currently editing any script",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    login.args["script"] = ""
+
+    # Set config file
+    write_config_error = config.write_config(login)
+    if write_config_error:
+        typer.secho(
+            f'[Volta] MySQL login failed with error "{ERRORS[write_config_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
     
+    typer.secho(
+        f"[Volta] No longer editing any preprocessing script",
+        fg=typer.colors.GREEN,
+    )
+
+    return
+
+def pushscript(
+    position: int = typer.Option(-1, '-p', "--position"),
+    command: str = typer.Option(..., prompt="Enter command"),
+) -> None:
+    """ Push command to preprocessing script """
+    # Check login status
+    
+
+    # Get original script
+
+
+    # Send to parser, add new command, return
+
+
+    # Set entry
+
+
+    return
+
+def popscript(
+    position: int = typer.Option(-1, '-p', "--position"),
+) -> None:
+    """ Pop command from preprocessing script """
+    # Check login
+
+    return
+
+@app.command("lscripts")
+def list_scripts() -> None:
+    """ List all preprocessing scripts """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Raw SQL query -> str
+    output, query_error = mysql_server.raw(login, "SELECT * FROM scripts")
+    if query_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[query_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
+
     return
 
 # edit script
@@ -826,13 +1001,6 @@ def deploy() -> None:
 def pull() -> None:
     """ Remove server endpoint model """
     
-    return
-
-from pathlib import Path
-@app.command()
-def test() -> None:
-    p = Path(r'/home').glob('**/*')
-    print([x for x in p if x.is_file()])
     return
 
 """ CLI LEVEL """
