@@ -2,7 +2,7 @@ import typer
 from typing import Optional
 
 from vcx import Login, config, ERRORS, __app_name__, __version__
-from vcx.ml_utils import display
+from vcx.ml_utils import display, parser
 from vcx.server import flask_server, mysql_server
 
 app = typer.Typer()
@@ -660,7 +660,7 @@ def create_dataset(
 
 @app.command("ddataset")
 def delete_dataset(
-    name: str = typer.Option(..., "--name", "-n", prompt="Group name"),
+    name: str = typer.Option(..., "--name", "-n", prompt="Dataset name"),
     confirm: str = typer.Option(..., prompt="Confirm you want to delete this dataset entry. Enter 'y'"),
 ) -> None:
     """ Delete dataset """
@@ -797,6 +797,7 @@ def delete_script(
     confirm: str = typer.Option(..., prompt="Confirm you want to delete this preprocessing script. Enter 'y'"),
 ) -> None:
     """ Delete preprocessing script """
+    # AUTOMATICALLY EXIT ON DELETE
     # Cancel if not confirmed
     if confirm != 'y':
         typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
@@ -830,7 +831,7 @@ def delete_script(
 
 @app.command("enscript")
 def enter_script(
-    name: str = typer.Option(..., "-n", "--name", prompt="Group name"),
+    name: str = typer.Option(..., "-n", "--name", prompt="Script name"),
 ) -> None:
     """ Enter editing mode for preprocessing script """
     # Check login status
@@ -901,31 +902,55 @@ def exit_script() -> None:
 
     return
 
+@app.command()
 def pushscript(
     position: int = typer.Option(-1, '-p', "--position"),
     command: str = typer.Option(..., prompt="Enter command"),
 ) -> None:
     """ Push command to preprocessing script """
     # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Send script from db to parser, add new command, send back to db
+    pushscript_error = parser.push_script(login, position, command)
+    if pushscript_error:
+        typer.secho(
+            f'[Volta] Script push error "{ERRORS[pushscript_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
     
-
-    # Get original script
-
-
-    # Send to parser, add new command, return
-
-
-    # Set entry
-
-
     return
 
+@app.command()
 def popscript(
     position: int = typer.Option(-1, '-p', "--position"),
 ) -> None:
     """ Pop command from preprocessing script """
     # Check login
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
+    # Send script from db to parser, pop command, send back to db
+    popscript_error = parser.pop_script(login, position)
+    if popscript_error:
+        typer.secho(
+            f'[Volta] Script push error "{ERRORS[popscript_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
     return
 
 @app.command("lscripts")

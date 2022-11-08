@@ -555,7 +555,7 @@ def createscript(login: Login, name: str, desc: str, dataset: str) -> int:
             
             create_query = f"""
             INSERT INTO scripts (project_id, modelset_id, dataset_id, name, dsc, script)
-            VALUES ({proj_id}, {ms_id}, {ds_id}, "{name}", "{desc}", "")
+            VALUES ({proj_id}, {ms_id}, {ds_id}, "{name}", "{desc}", " ")
             """
             with conn.cursor() as cursor:
                 cursor.execute(create_query)
@@ -590,7 +590,7 @@ def deletescript(login: str, name: str) -> int:
 
     return SUCCESS
 
-def getscript(login: str, name: str) -> ScriptResponse:
+def getscript(login: str) -> ScriptResponse:
     """ Retrieve script test """
     try:
         with connect(
@@ -599,20 +599,43 @@ def getscript(login: str, name: str) -> ScriptResponse:
             password = login.args["password"],
             database = "volta",
         ) as conn:
-            create_query = f'SELECT script FROM scripts WHERE name = "{name}"'
+            create_query = f'SELECT script FROM scripts WHERE name = "{login.args["script"]}"'
             with conn.cursor() as cursor:
                 cursor.execute(create_query)
                 response = cursor.fetchall()
                 if not len(response):
                     return (None, STATUS_MYSQL_ENTRY_NO_EX)
-                
-                script = response[0]
+                script = response[0][0]
                 return (script, SUCCESS)
     except Error as e:
         # print(e)
         pass
         
-    return ERR_MYSQL_QUERY
+    return (None, ERR_MYSQL_QUERY)
+
+def setscript(login: str, script: str) -> int:
+    """ Retrieve script test """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            script_id, get_script_id_error = get_id(login, "scripts", login.args["script"])
+            if get_script_id_error:
+                return get_script_id_error
+
+            set_script_query = f'UPDATE scripts SET script = "{script}" WHERE id = {script_id}'
+            with conn.cursor() as cursor:
+                cursor.execute(set_script_query)
+                conn.commit()
+            
+    except Error as e:
+        print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
 
 """ MODEL LEVEL COMMANDS """ 
 
