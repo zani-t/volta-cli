@@ -213,19 +213,19 @@ def get_id(login: Login, level: str, name: str) -> IDResponse:
             database = "volta",
         ) as conn:
 
-            ### ONLY REMOVE FROM CURRENT PROJECT/GROUP
-
             get_id_query = f"SELECT id FROM {level} WHERE name = '{name}'"
             ext = ''
             if level != 'projects':
-                proj_id, get_proj_id_error = get_id(login, "projects", name)
+                proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
+                # print("proj_id", proj_id)
                 if get_proj_id_error:
-                    return get_proj_id_error
+                    return (None, get_proj_id_error)
                 ext += f' AND project_id = {proj_id}'
                 if level != 'modelsets':
-                    ms_id, get_ms_id_error = get_id(login, "modelsets", name)
+                    ms_id, get_ms_id_error = get_id(login, "modelsets", login.args["modelset"])
+                    # print("ms_id", ms_id)
                     if get_ms_id_error:
-                        return get_ms_id_error
+                        return (None, get_ms_id_error)
                     ext += f' AND modelset_id = {ms_id}'
             get_id_query += ext
             # print(get_id_query)
