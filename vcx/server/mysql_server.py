@@ -134,6 +134,7 @@ def init(login: Login) -> int:
             address VARCHAR(100),
             datatype VARCHAR(255),
             v_framework VARCHAR(50),
+            deployed TINYINT(1),
             total_runs INT,
             avg_runtime FLOAT,
             FOREIGN KEY(model_id) REFERENCES models(id)
@@ -215,8 +216,21 @@ def get_id(login: Login, level: str, name: str) -> IDResponse:
             ### ONLY REMOVE FROM CURRENT PROJECT/GROUP
 
             get_id_query = f"SELECT id FROM {level} WHERE name = '{name}'"
+            ext = ''
+            if level != 'projects':
+                proj_id, get_proj_id_error = get_id(login, "projects", name)
+                if get_proj_id_error:
+                    return get_proj_id_error
+                ext += f' AND project_id = {proj_id}'
+                if level != 'modelsets':
+                    ms_id, get_ms_id_error = get_id(login, "modelsets", name)
+                    if get_ms_id_error:
+                        return get_ms_id_error
+                    ext += f' AND modelset_id = {ms_id}'
+            get_id_query += ext
+            print(get_id_query)
+
             with conn.cursor() as cursor:
-                # Try block obsolete in with block???
                 cursor.execute(get_id_query)
                 entry = cursor.fetchone()
                 if not entry:
@@ -282,6 +296,51 @@ def _check_for_project(login: Login, proj_name: str, modelset_name: str, script_
     
     return SUCCESS
 
+def _check_duplicate(login: Login, level: str, name: str, script_ds: str=None) -> int:
+    """ Check for duplicate names in database """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            check_duplicate_query = f"""
+            SELECT * FROM {level} WHERE name = '{name}'
+            """
+            # modelset -> unique per project
+            # dataset -> unique per modelset
+            # script -> unique per dataset
+            # model -> unique per modelset
+            ext = ''
+            if level != 'projects':
+                proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
+                print("get_proj_id_error", get_proj_id_error)
+                if get_proj_id_error:
+                    return get_proj_id_error
+                ext += f' AND project_id = {proj_id}'
+                # print([login.args["project"], str(proj_id), ext])
+                if level != 'modelsets':
+                    ms_id, get_ms_id_error = get_id(login, "modelsets", login.args["modelset"])
+                    if get_ms_id_error:
+                        return get_ms_id_error
+                    ext += f' AND modelset_id = {ms_id}'
+                if level == 'scripts':
+                    ds_id, get_ds_id_error = get_id(login, "datasets", script_ds)
+                    if get_ds_id_error:
+                        return get_ds_id_error
+                    ext += f' AND dataset_id = {ds_id}'
+            check_duplicate_query += ext
+            print("check_duplicate_query", check_duplicate_query)
+
+            with conn.cursor() as cursor:
+                cursor.execute(check_duplicate_query)
+                return len(cursor.fetchall())
+    except Error as e:
+        pass
+
+    return ERR_MYSQL_QUERY
+
 """ PROJECT LEVEL COMMANDS """
 
 def createproj(login: Login, name: str, desc: str) -> int:
@@ -304,9 +363,7 @@ def createproj(login: Login, name: str, desc: str) -> int:
             """
             with conn.cursor() as cursor:
                 cursor.execute(create_query)
-                print("executed")
                 conn.commit()
-                print("committed")
     except Error as e:
         # print(e)
         return ERR_MYSQL_QUERY
@@ -342,7 +399,6 @@ def deleteproj(login: str, name: str) -> int:
                     delete_modelset_query,
                     delete_project_query,
                 ):
-                    print(query)
                     cursor.execute(query)
                     conn.commit()
     except Error as e:
@@ -351,44 +407,26 @@ def deleteproj(login: str, name: str) -> int:
 
     return SUCCESS
 
-def _check_duplicate(login: Login, level: str, name: str) -> int:
-    """ unfinished Check for duplicate names in database """
-    try:
-        with connect(
-            host = login.args["host"],
-            user = login.args["user"],
-            password = login.args["password"],
-            database = "volta",
-        ) as conn:
-            check_duplicate_query = f"""
-            SELECT * FROM {level} WHERE name = '{name}'
-            """
-            with conn.cursor() as cursor:
-                cursor.execute(check_duplicate_query)
-                return len(cursor.fetchall())
-    except Error as e:
-        pass
-
-    return ERR_MYSQL_QUERY
-
 """ MODELSET LEVEL COMMANDS """
 
-def createmset(login: Login, name: str, desc: str) -> int:
+def createmset(login: Login, proj_name: str, name: str, desc: str) -> int:
     """ Create modelset """
     # Create modelset with given name and description
     try:
-        print("creating group")
         with connect(
             host = login.args["host"],
             user = login.args["user"],
             password = login.args["password"],
             database = "volta",
         ) as conn:
+            # Set current project to given project name
+            login.args["project"] = proj_name
+            # Search for modelset (default 'Unsorted') in project
             duplicate = _check_duplicate(login, "modelsets", name)
             if duplicate:
-                return STATUS_MYSQL_PROJ_EX
+                return STATUS_MYSQL_ENTRY_EX
                 
-            proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
+            proj_id, get_proj_id_error = get_id(login, "projects", proj_name)
             if get_proj_id_error:
                 return get_proj_id_error
 
@@ -537,7 +575,7 @@ def createscript(login: Login, name: str, desc: str, dataset: str) -> int:
             database = "volta",
         ) as conn:
             
-            duplicate = _check_duplicate(login, "scripts", name)
+            duplicate = _check_duplicate(login, "scripts", name, script_ds=dataset)
             if duplicate:
                 return STATUS_MYSQL_ENTRY_EX
             
@@ -639,3 +677,69 @@ def setscript(login: str, script: str) -> int:
 
 """ MODEL LEVEL COMMANDS """ 
 
+def createmodel(login: Login, name: str, desc: str, arch: int, dataset: str, script: str) -> int:
+    """ Create untrained model """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            
+            duplicate = _check_duplicate(login, "models", name)
+            if duplicate:
+                return STATUS_MYSQL_ENTRY_EX
+            
+            proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
+            if get_proj_id_error:
+                return get_proj_id_error
+            
+            ms_id, get_ms_id_error = get_id(login, "modelsets", login.args["modelset"])
+            if get_ms_id_error:
+                return get_ms_id_error
+            
+            ds_id, get_ds_id_error = get_id(login, "datasets", dataset)
+            if get_ds_id_error:
+                return get_ds_id_error
+            
+            script_id, get_script_id_error = get_id(login, "scripts", script)
+            if get_script_id_error:
+                return get_script_id_error
+            
+            create_query = f"""
+            INSERT INTO models (project_id, modelset_id, dataset_id, script_id, name, dsc, arch)
+            VALUES ({proj_id}, {ms_id}, {ds_id}, {script_id}, "{name}", "{desc}", "{arch}")
+            """
+            with conn.cursor() as cursor:
+                cursor.execute(create_query)
+                conn.commit()
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS
+
+def deletemodel(login: str, name: str) -> int:
+    """ Delete model """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            model_id, get_model_id_error = get_id(login, "models", name)
+            if get_model_id_error:
+                return get_model_id_error
+
+            delete_script_query = f"DELETE FROM models WHERE id = {model_id}"
+            with conn.cursor() as cursor:
+                cursor.execute(delete_script_query)
+                conn.commit()
+            
+    except Error as e:
+        # print(e)
+        return ERR_MYSQL_QUERY
+
+    return SUCCESS

@@ -438,7 +438,7 @@ def create_modelset(
         raise typer.Exit(1)
     
     # Create modelset entry
-    createmset_error = mysql_server.createmset(login, name, desc)
+    createmset_error = mysql_server.createmset(login, login.args["project"], name, desc)
     if createmset_error:
         typer.secho(
             f'[Volta] MySQL group creation failed with error "{ERRORS[createmset_error]}"',
@@ -926,6 +926,8 @@ def pushscript(
         )
         raise typer.Exit(1)
     
+    typer.secho(f'[Volta] Pushed command ${command} to script {login.args["script"]}', fg=typer.colors.GREEN)
+
     return
 
 @app.command()
@@ -951,7 +953,11 @@ def popscript(
         )
         raise typer.Exit(1)
     
+    typer.secho(f'[Volta] Command popped from script {login.args["script"]}', fg=typer.colors.GREEN)
+    
     return
+
+# edit specific line in script
 
 @app.command("lscripts")
 def list_scripts() -> None:
@@ -978,33 +984,98 @@ def list_scripts() -> None:
 
     return
 
-# edit script
+# show 1 script, formatted
 
 """ MODEL LEVEL """
 
 @app.command("cmodel")
 def create_model(
     name: str = typer.Option(..., '-n', "--name", prompt="Model name"),
-    desc: str = typer.Option(..., '-d', "--desc", prompt="Model description"), # list?
-    dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Model dataset"),
+    desc: str = typer.Option(..., prompt="Model description"),
     arch: str = typer.Option(..., '-a', "--arch", prompt="Model architecture"),
+    dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Model dataset"),
     script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script"),
-    # hyperparameters - list
-    # eval metrics - list
 ) -> None:
     """ Create model """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Create model entry
+    createmodel_error = mysql_server.createmodel(login, name, desc, arch, dataset, script)
+    if createmodel_error:
+        typer.secho(
+            f'[Volta] MySQL model creation failed with error "{ERRORS[createmodel_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(f'[Volta] Created untrained model name={name}', fg=typer.colors.GREEN)
 
     return
 
 @app.command("dmodel")
-def delete_model() -> None:
+def delete_model(
+    name: str = typer.Option(..., "-n", "--name", prompt="Preprocessing script name"),
+    confirm: str = typer.Option(..., prompt="Confirm you want to delete this preprocessing script. Enter 'y'"),
+) -> None:
     """ Delete model """
+    # Cancel if not confirmed
+    if confirm != 'y':
+        typer.secho('[Volta] Operation cancelled', fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Delete
+    deletemodel_error = mysql_server.deletemodel(login, name)
+    if deletemodel_error:
+        typer.secho(
+            f'[Volta] MySQL dataset deletion failed with error "{ERRORS[deletemodel_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+    # Valid
+    typer.secho(f'[Volta] Deleted model name={name}', fg=typer.colors.GREEN)
     
     return
 
 @app.command("lmodels")
 def list_models() -> None:
     """ List all models """
+    # Check login status
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    # Raw SQL query
+    output, query_error = mysql_server.raw(login, "SELECT * FROM models")
+    if query_error:
+        typer.secho(
+            f'[Volta] Raw MySQL query error "{ERRORS[query_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    
+    typer.secho(f'[Volta]\n{output}', fg=typer.colors.GREEN)
     
     return
 
@@ -1013,7 +1084,13 @@ def train(
     name: str = typer.Option(..., '-n', "--name", prompt="Model name")
 ) -> None:
     """ Train model """
+    # Check login status
+
     
+    # Train model and return eval metrics
+
+
+    # Prompt user to save as endpoint
     return
 
 @app.command()

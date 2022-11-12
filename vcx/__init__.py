@@ -69,6 +69,6 @@ ERRORS = {
     STATUS_MYSQL_DB_NO_EX : "[MySQL database 'volta' doesn't exist]",
     STATUS_MYSQL_PROJ_EX : "[MySQL project exists already]",
     STATUS_MYSQL_PROJ_NO_EX : "[MySQL project does not exist]",
-    STATUS_MYSQL_ENTRY_EX : "[MySQL given entry does exists]",
+    STATUS_MYSQL_ENTRY_EX : "[MySQL given entry exists]",
     STATUS_MYSQL_ENTRY_NO_EX : "[MySQL given entry does not exist]",
 }
