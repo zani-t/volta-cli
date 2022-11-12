@@ -174,7 +174,7 @@ def init(login: Login) -> int:
                     cursor.execute(query)
                     conn.commit()
     except Error as e:
-        print(e)
+        # print(e)
         return ERR_MYSQL_QUERY
 
     return SUCCESS
@@ -198,7 +198,7 @@ def destroy(login: Login) -> int:
                 cursor.execute(create_db_query)
                 conn.commit()
     except Error as e:
-        #print(e)
+        # print(e)
         return ERR_MYSQL_QUERY
 
     return SUCCESS
@@ -228,7 +228,7 @@ def get_id(login: Login, level: str, name: str) -> IDResponse:
                         return get_ms_id_error
                     ext += f' AND modelset_id = {ms_id}'
             get_id_query += ext
-            print(get_id_query)
+            # print(get_id_query)
 
             with conn.cursor() as cursor:
                 cursor.execute(get_id_query)
@@ -315,7 +315,7 @@ def _check_duplicate(login: Login, level: str, name: str, script_ds: str=None) -
             ext = ''
             if level != 'projects':
                 proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
-                print("get_proj_id_error", get_proj_id_error)
+                # print("get_proj_id_error", get_proj_id_error)
                 if get_proj_id_error:
                     return get_proj_id_error
                 ext += f' AND project_id = {proj_id}'
@@ -331,7 +331,7 @@ def _check_duplicate(login: Login, level: str, name: str, script_ds: str=None) -
                         return get_ds_id_error
                     ext += f' AND dataset_id = {ds_id}'
             check_duplicate_query += ext
-            print("check_duplicate_query", check_duplicate_query)
+            # print("check_duplicate_query", check_duplicate_query)
 
             with conn.cursor() as cursor:
                 cursor.execute(check_duplicate_query)
@@ -670,7 +670,7 @@ def setscript(login: str, script: str) -> int:
                 conn.commit()
             
     except Error as e:
-        print(e)
+        # print(e)
         return ERR_MYSQL_QUERY
 
     return SUCCESS
