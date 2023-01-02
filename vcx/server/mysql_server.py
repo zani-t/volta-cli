@@ -3,7 +3,7 @@
 from mysql.connector import connect, Error
 
 from vcx import (
-    Login, DatasetResponseSQL, IDResponse, RawResponse, ScriptResponse,
+    Login, DatasetResponseSQL, IDResponse, ModelResponse, RawResponse, ScriptResponse,
     ERR_MYSQL_CONN, ERR_MYSQL_QUERY, STATUS_MYSQL_DB_EX, STATUS_MYSQL_DB_NO_EX,
     STATUS_MYSQL_PROJ_EX, STATUS_MYSQL_PROJ_NO_EX, STATUS_MYSQL_ENTRY_NO_EX, STATUS_MYSQL_ENTRY_EX, SUCCESS,
     __app_name__,
@@ -114,15 +114,11 @@ def init(login: Login) -> int:
             id INT AUTO_INCREMENT PRIMARY KEY,
             project_id INT,
             modelset_id INT,
-            dataset_id INT,
-            script_id INT,
             name VARCHAR(100),
             dsc VARCHAR(255),
             arch VARCHAR(100),
             FOREIGN KEY(project_id) REFERENCES projects(id),
-            FOREIGN KEY(modelset_id) REFERENCES modelsets(id),
-            FOREIGN KEY(dataset_id) REFERENCES datasets(id),
-            FOREIGN KEY(script_id) REFERENCES scripts(id)
+            FOREIGN KEY(modelset_id) REFERENCES modelsets(id)
         )
         """
         create_endpoints_query = """
@@ -130,6 +126,7 @@ def init(login: Login) -> int:
             id INT AUTO_INCREMENT PRIMARY KEY,
             model_id INT,
             alias VARCHAR(100),
+            dataset VARCHAR(100),
             location TINYINT(1),
             address VARCHAR(100),
             datatype VARCHAR(255),
@@ -322,11 +319,13 @@ def _check_duplicate(login: Login, level: str, name: str, script_ds: str=None) -
                 # print([login.args["project"], str(proj_id), ext])
                 if level != 'modelsets':
                     ms_id, get_ms_id_error = get_id(login, "modelsets", login.args["modelset"])
+                    # print("get_ms_id_error", get_ms_id_error)
                     if get_ms_id_error:
                         return get_ms_id_error
                     ext += f' AND modelset_id = {ms_id}'
                 if level == 'scripts':
                     ds_id, get_ds_id_error = get_id(login, "datasets", script_ds)
+                    # print("get_ds_id_error", get_ds_id_error)
                     if get_ds_id_error:
                         return get_ds_id_error
                     ext += f' AND dataset_id = {ds_id}'
@@ -539,7 +538,7 @@ def deletedataset(login: str, name: str) -> int:
 
     return SUCCESS
 
-def getdataset(login: str, name: str) -> DatasetResponseSQL:
+def getdataset(login: str, name: str=None, id: int=None) -> DatasetResponseSQL:
     """ Retrieve str dataset address """
     try:
         with connect(
@@ -577,7 +576,7 @@ def createscript(login: Login, name: str, desc: str, dataset: str) -> int:
             
             duplicate = _check_duplicate(login, "scripts", name, script_ds=dataset)
             if duplicate:
-                return STATUS_MYSQL_ENTRY_EX
+                return duplicate
             
             proj_id, get_proj_id_error = get_id(login, "projects", login.args["project"])
             if get_proj_id_error:
@@ -628,7 +627,7 @@ def deletescript(login: str, name: str) -> int:
 
     return SUCCESS
 
-def getscript(login: str) -> ScriptResponse:
+def getscript(login: str, name=None) -> ScriptResponse:
     """ Retrieve script test """
     try:
         with connect(
@@ -637,9 +636,14 @@ def getscript(login: str) -> ScriptResponse:
             password = login.args["password"],
             database = "volta",
         ) as conn:
-            create_query = f'SELECT script FROM scripts WHERE name = "{login.args["script"]}"'
+            # NARROW DOWN TO LOGIN CREDENTIALS
+            get_query = ""
+            if name:
+                get_query = f'SELECT script FROM scripts WHERE name = "{name}"'
+            else:
+                get_query = f'SELECT script FROM scripts WHERE name = "{login.args["script"]}"'
             with conn.cursor() as cursor:
-                cursor.execute(create_query)
+                cursor.execute(get_query)
                 response = cursor.fetchall()
                 if not len(response):
                     return (None, STATUS_MYSQL_ENTRY_NO_EX)
@@ -677,7 +681,7 @@ def setscript(login: str, script: str) -> int:
 
 """ MODEL LEVEL COMMANDS """ 
 
-def createmodel(login: Login, name: str, desc: str, arch: int, dataset: str, script: str) -> int:
+def createmodel(login: Login, name: str, desc: str, arch: int) -> int:
     """ Create untrained model """
     try:
         with connect(
@@ -699,18 +703,11 @@ def createmodel(login: Login, name: str, desc: str, arch: int, dataset: str, scr
             if get_ms_id_error:
                 return get_ms_id_error
             
-            ds_id, get_ds_id_error = get_id(login, "datasets", dataset)
-            if get_ds_id_error:
-                return get_ds_id_error
-            
-            script_id, get_script_id_error = get_id(login, "scripts", script)
-            if get_script_id_error:
-                return get_script_id_error
-            
             create_query = f"""
-            INSERT INTO models (project_id, modelset_id, dataset_id, script_id, name, dsc, arch)
-            VALUES ({proj_id}, {ms_id}, {ds_id}, {script_id}, "{name}", "{desc}", "{arch}")
+            INSERT INTO models (project_id, modelset_id, name, dsc, arch)
+            VALUES ({proj_id}, {ms_id}, "{name}", "{desc}", "{arch}")
             """
+            # print(create_query)
             with conn.cursor() as cursor:
                 cursor.execute(create_query)
                 conn.commit()
@@ -743,3 +740,27 @@ def deletemodel(login: str, name: str) -> int:
         return ERR_MYSQL_QUERY
 
     return SUCCESS
+
+def getmodel(login: str, name: str) -> ModelResponse:
+    """ Retrieve model """
+    try:
+        with connect(
+            host = login.args["host"],
+            user = login.args["user"],
+            password = login.args["password"],
+            database = "volta",
+        ) as conn:
+            # NARROW DOWN TO LOGIN CREDENTIALS
+            create_query = f'SELECT * FROM models WHERE name = "{name}"'
+            with conn.cursor() as cursor:
+                cursor.execute(create_query)
+                response = cursor.fetchall()
+                if not len(response):
+                    return (None, STATUS_MYSQL_ENTRY_NO_EX)
+                script = response[0]
+                return (script, SUCCESS)
+    except Error as e:
+        # print(e)
+        pass
+        
+    return (None, ERR_MYSQL_QUERY)

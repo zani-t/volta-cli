@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+from vcx.server import mysql_server
 from vcx import (
     Login, DatasetResponsePy,
     ERR_PANDAS_READ, SUCCESS
@@ -11,11 +12,16 @@ from vcx import (
 
 # List all columns/features
 def list_columns(
-    location: int,
-    address: str,
+    login: Login,
+    name: int,
     # optional parameter list specific columns
 ) -> DatasetResponsePy:
     """ List dataset columns """
+    # Get dataset address
+    location, address, getds_error = mysql_server.getdataset(login, name=name)
+    if getds_error:
+        return getds_error
+
     try:
         # ONLY LOCAL SUPPORTED ?
         data = pd.read_csv(address)

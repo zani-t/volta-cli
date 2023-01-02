@@ -35,6 +35,10 @@ class ScriptResponse(NamedTuple):
     script: str
     response: int
 
+class ModelResponse(NamedTuple):
+    script: str
+    response: int
+
 __app_name__ = 'volta-cli'
 __version__ = '0.1.0'
 

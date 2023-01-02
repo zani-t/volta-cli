@@ -2,7 +2,7 @@ import typer
 from typing import Optional
 
 from vcx import Login, config, ERRORS, __app_name__, __version__
-from vcx.ml_utils import display, parser
+from vcx.ml_utils import display, parser, trainer
 from vcx.server import flask_server, mysql_server
 
 app = typer.Typer()
@@ -734,17 +734,8 @@ def view_dataset(
         )
         raise typer.Exit(1)
     
-    # Get dataset address
-    location, address, getds_error = mysql_server.getdataset(login, name)
-    if getds_error:
-        typer.secho(
-            f'[Volta] Raw MySQL query error "{ERRORS[getds_error]}"',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-    
     # Load columns using pandas
-    columns, listcols_error = display.list_columns(location, address)
+    columns, listcols_error = display.list_columns(login, name)
     if listcols_error:
         typer.secho(
             f'[Volta] Raw MySQL query error "{ERRORS[listcols_error]}"',
@@ -992,9 +983,7 @@ def list_scripts() -> None:
 def create_model(
     name: str = typer.Option(..., '-n', "--name", prompt="Model name"),
     desc: str = typer.Option(..., prompt="Model description"),
-    arch: str = typer.Option(..., '-a', "--arch", prompt="Model architecture"),
-    dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Model dataset"),
-    script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script"),
+    arch: str = typer.Option(..., '-a', "--arch", prompt="Model architecture")
 ) -> None:
     """ Create model """
     # Check login status
@@ -1007,7 +996,7 @@ def create_model(
         raise typer.Exit(1)
     
     # Create model entry
-    createmodel_error = mysql_server.createmodel(login, name, desc, arch, dataset, script)
+    createmodel_error = mysql_server.createmodel(login, name, desc, arch)
     if createmodel_error:
         typer.secho(
             f'[Volta] MySQL model creation failed with error "{ERRORS[createmodel_error]}"',
@@ -1081,14 +1070,28 @@ def list_models() -> None:
 
 @app.command()
 def train(
-    name: str = typer.Option(..., '-n', "--name", prompt="Model name")
+    name: str = typer.Option(..., '-n', "--name", prompt="Model name"),
+    dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Model dataset"),
+    script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script")
 ) -> None:
     """ Train model """
     # Check login status
-
+    login, login_error = config.read_config()
+    if login_error:
+        typer.secho(
+            f'[Volta] Login failed with current status "{ERRORS[login_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
     
     # Train model and return eval metrics
-
+    train_error = trainer.train(login, name, dataset, script)
+    if train_error:
+        typer.secho(
+            f'[Volta] Training error "{ERRORS[train_error]}"',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
     # Prompt user to save as endpoint
     return
