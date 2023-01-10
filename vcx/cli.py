@@ -1072,7 +1072,11 @@ def list_models() -> None:
 def train(
     name: str = typer.Option(..., '-n', "--name", prompt="Model name"),
     dataset: str = typer.Option(..., '-ds', "--dataset", prompt="Model dataset"),
-    script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script")
+    script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script"),
+    label: str = typer.Option(None, '-l', "--label", help="Training label"),
+    test_size: float = typer.Option(0.2, '-ts', "--testsize", help="Test set size"),
+    penalty: str = typer.Option('l2', '-p', "--penalty", help="Regularization penalty"),
+    max_iter: int = typer.Option(100, '-mi', "--maxiter", help="Max # of iterations"),
 ) -> None:
     """ Train model """
     # Check login status
@@ -1085,7 +1089,7 @@ def train(
         raise typer.Exit(1)
     
     # Train model and return eval metrics
-    train_error = trainer.train(login, name, dataset, script)
+    train_error = trainer.train(login, name, dataset, script, label, test_size, penalty, max_iter)
     if train_error:
         typer.secho(
             f'[Volta] Training error "{ERRORS[train_error]}"',

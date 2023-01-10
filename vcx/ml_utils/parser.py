@@ -25,13 +25,13 @@ def _parse_to_strs(script: str) -> List[str]:
     
     return script.split(" $")[1:]
 
-def parse_to_objects(script: str) -> List[Command]:
+def parse_to_commands(script: str) -> List[Command]:
     # edge case - empty
     output = []
     if script == " ":
         return output
     
-    commands =  script.split(" $")[1:]
+    commands = script.split(" $")[1:]
     for c in commands:
         elements = c.split(" ")
         output.append(Command(elements[0]))
@@ -45,6 +45,8 @@ def parse_to_objects(script: str) -> List[Command]:
 
 def push_script(login: Login, position: int, command: str) -> int:
     """ Add command to preprocessing script """
+    # CHECK FOR ILLEGAL COMMAND
+
     # Get string script
     script, getscript_error = mysql_server.getscript(login=login)
     if getscript_error:
@@ -52,7 +54,8 @@ def push_script(login: Login, position: int, command: str) -> int:
     
     # Convert to commands and insert new command from user
     parsed_script = _parse_to_strs(script)
-    position = len(parsed_script) if -1 else position
+    if position == -1:
+        position = len(parsed_script)
     parsed_script.insert(position, command)
 
     # Convert back to list and str format, update db

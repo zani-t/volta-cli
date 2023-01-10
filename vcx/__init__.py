@@ -11,8 +11,8 @@ class Login():
         self.args.update(kwargs)
 
 class DatasetResponseSQL(NamedTuple):
-    ds_address: str
     location: bool
+    address: str
     response: int
 
 class DatasetResponsePy(NamedTuple):
