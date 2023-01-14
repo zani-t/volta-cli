@@ -12,7 +12,7 @@ SUPPORTED_COMMANDS = {
     "DROP",
     "FILLNA",
     "FIT_TRANSFORM",
-    "SET_LABEL",
+    "SET_FEATURES",
     "TRANSFORM"
 }
 
@@ -51,7 +51,7 @@ def operate(data: DataFrame, command: Command) -> DataFrame:
         cols, value, inplace = (
             command_dict["FEATURES"],
             parse_value(command_dict["VALUE"][0]),
-            command_dict["INPLACE"][0],
+            command_dict.get("INPLACE", ["False"])[0],
         )
         for col in cols:
             data[col].fillna(
@@ -64,6 +64,9 @@ def operate(data: DataFrame, command: Command) -> DataFrame:
         cols = command_dict["FEATURES"] # OTHER PARAMS
         for col in cols:
             data[col] = le.fit_transform(data[col])
+    elif command.name == "SET_FEATURES":
+        command_dict = dictify(command)
+        data = data[command_dict["FEATURES"]]
     elif command.name == "TRANSFORM":
         pass
 

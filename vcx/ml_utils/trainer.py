@@ -2,6 +2,7 @@
 
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
@@ -17,10 +18,13 @@ def train(
     name: str,
     ds_name: str,
     script_name: str,
-    label: str,
+    label: str | None,
     test_size: float,
+    rs_ds: int | None,
+    rs_m: int | None,
+    max_iter: int | None,
     penalty: str,
-    max_iter: int,
+    kernel: str,
 ) -> int:
     """ Train model """
     # Retrieve model
@@ -43,18 +47,27 @@ def train(
 
     # Initialize and train model
     arch = mysql_model[5]
-    if arch == "LogisticRegression":
+
+    if (arch == "LogisticRegression") or (arch == "LogReg"):
         if not label:
             # ADD NO LABEL ERROR
             raise Exception
         y = data[label]
         X = data.drop(label, axis=1)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-        clf = LogisticRegression(penalty=penalty, random_state=0, max_iter=max_iter).fit(X_train, y_train)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=rs_ds)
+        clf = LogisticRegression(penalty=penalty, random_state=rs_m, max_iter=max_iter).fit(X_train, y_train)
+        print(clf.score(X_test, y_test))
+    
+    if (arch == "SupportVectorMachine") or (arch == "SVM"):
+        if not label:
+            # ADD NO LABEL ERROR
+            raise Exception
+        y = data[label]
+        X = data.drop(label, axis=1)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=rs_ds)
+        clf = SVC(kernel=kernel, random_state=rs_m).fit(X_train, y_train) # ADD REGULARIZATION C
+        print(clf.score(X_test, y_test))
 
     # Display eval metric and prompt user to save
-    predictions = clf.predict(X_test)
-    print(accuracy_score(y_test, predictions))
 
     return SUCCESS
-    # vcx train -n titanic_logreg_0.1 -ds TitanicDataset -s TitanicScript -l Survived -mi 1000

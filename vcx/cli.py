@@ -1075,8 +1075,11 @@ def train(
     script: str = typer.Option(..., '-s', "--script", prompt="Model preprocessing script"),
     label: str = typer.Option(None, '-l', "--label", help="Training label"),
     test_size: float = typer.Option(0.2, '-ts', "--testsize", help="Test set size"),
+    rs_ds: int = typer.Option(None, '-rsds', "--rsds", help="Train-test split random state"),
+    rs_m: int = typer.Option(None, '-rsm', "--rsm", help="Model random state"),
+    max_iter: int = typer.Option(None, '-mi', "--maxiter", help="Max # of iterations"),
     penalty: str = typer.Option('l2', '-p', "--penalty", help="Regularization penalty"),
-    max_iter: int = typer.Option(100, '-mi', "--maxiter", help="Max # of iterations"),
+    kernel: str = typer.Option('rbf', '-k', "--kernel", help="SVM Kernel"),
 ) -> None:
     """ Train model """
     # Check login status
@@ -1089,7 +1092,18 @@ def train(
         raise typer.Exit(1)
     
     # Train model and return eval metrics
-    train_error = trainer.train(login, name, dataset, script, label, test_size, penalty, max_iter)
+    train_error = trainer.train(
+        login=login,
+        name=name,
+        ds_name=dataset,
+        script_name=script,
+        label=label,
+        test_size=test_size,
+        rs_ds=rs_ds,
+        rs_m=rs_m,
+        max_iter=max_iter,
+        penalty=penalty,
+        kernel=kernel)
     if train_error:
         typer.secho(
             f'[Volta] Training error "{ERRORS[train_error]}"',
